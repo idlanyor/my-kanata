@@ -1,0 +1,6 @@
+.env
+node_modules/
+*.mp3
+*.docx
+*.txt
+auth_info_baileys
