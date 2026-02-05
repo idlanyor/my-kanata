@@ -50,15 +50,33 @@ export default {
 
                 const audioBuffer = fs.readFileSync(outputFilePath);
 
-                // Generate Real Waveform Data (Uint8Array/Buffer)
-                // Range 0-255, length 100 for better visibility
-                const waveform = Buffer.from(new Uint8Array(Array.from({ length: 100 }, () => Math.floor(Math.random() * 256))));
+                // Generate Rhythmic Waveform (Simulated Sine Wave + Noise)
+                // This looks more natural than pure random
+                const waveLength = 70;
+                const waveform = new Uint8Array(waveLength);
+                for (let i = 0; i < waveLength; i++) {
+                    // Create a "pulse" effect using sine
+                    const pulse = Math.sin(i / 2) * 60 + 120;
+                    // Add micro-noise
+                    const noise = Math.random() * 40;
+                    waveform[i] = Math.min(255, pulse + noise);
+                }
 
                 await sock.sendMessage(m.chat, { 
                     audio: audioBuffer, 
-                    ptt: true, // This makes it a Voice Note
-                    waveform: waveform, // Adds the visual spectrum
-                    mimetype: 'audio/ogg; codecs=opus'
+                    ptt: true, 
+                    waveform: Buffer.from(waveform), 
+                    mimetype: 'audio/ogg; codecs=opus',
+                    contextInfo: {
+                        externalAdReply: {
+                            title: 'VOICE NOTE CONVERTER',
+                            body: 'Rhythmic Audio Spectrum (Sync)',
+                            mediaType: 1,
+                            renderLargerThumbnail: false,
+                            thumbnail: fs.existsSync('./maskot.jpeg') ? fs.readFileSync('./maskot.jpeg') : null,
+                            sourceUrl: 'https://api.kanata.web.id'
+                        }
+                    }
                 }, { quoted: m });
 
                 fs.unlinkSync(outputFilePath); // Delete output file
