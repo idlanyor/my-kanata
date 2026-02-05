@@ -12,7 +12,7 @@ export default {
         
         try {
             // console.log(`[DEBUG] Fetching video API for: ${text}`);
-            const data = await fetchAPI('/youtube/download', { url: text });
+            const data = await fetchAPI('/youtube2/download', { url: text });
             
             if (data.status !== 'success' || !data.full_url) {
                 // console.log(`[DEBUG] ytmp4 API Failure:`, data);

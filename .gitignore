@@ -3,4 +3,6 @@ node_modules/
 *.mp3
 *.docx
 *.txt
+*.jpg
+*test-*
 auth_info_baileys

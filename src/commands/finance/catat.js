@@ -102,7 +102,7 @@ Jika tidak jelas, balas: {"error": "data tidak jelas"}`;
             }
 
             const transactions = Array.isArray(data) ? data : [data];
-            let responseMsg = `*${transactions.length} TRANSAKSI BERHASIL DICATAT* ✅\n\n`;
+            let responseMsg = `*${transactions.length} TRANSAKSI BERHASIL DICATAT* \n\n`;
             
             for (const txData of transactions) {
                 const newTx = await Transaction.create({
@@ -115,7 +115,7 @@ Jika tidak jelas, balas: {"error": "data tidak jelas"}`;
                     date: txData.date ? new Date(txData.date) : new Date()
                 });
 
-                const statusEmoji = txData.type === 'income' ? '💰' : '💸';
+                const statusEmoji = txData.type === 'income' ? '' : '';
                 const formattedAmount = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(txData.amount);
                 const txDate = new Date(newTx.date).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' });
 

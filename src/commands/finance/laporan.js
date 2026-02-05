@@ -25,7 +25,7 @@ export default {
 
             let totalIncome = 0;
             let totalExpense = 0;
-            let reportMsg = `*LAPORAN KEUANGAN* 📊\n`;
+            let reportMsg = `*LAPORAN KEUANGAN* \n`;
             reportMsg += `_Periode: ${now.toLocaleString('id-ID', { month: 'long', year: 'numeric' })}_\n\n`;
 
             const listMsg = transactions.map((tx, i) => {
@@ -39,7 +39,7 @@ export default {
                 if (tx.type === 'income') totalIncome += tx.amount;
                 else totalExpense += tx.amount;
 
-                const emoji = tx.type === 'income' ? '🟢' : '🔴';
+                const emoji = tx.type === 'income' ? '' : '';
                 const amountFormatted = new Intl.NumberFormat('id-ID').format(tx.amount);
                 
                 return `${i + 1}. [${dateStr}] ${emoji} *Rp ${amountFormatted}*\n   _${tx.description} (${tx.category})_\n   \`${tx._id}\``;
@@ -49,8 +49,8 @@ export default {
             const formatCurrency = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
 
             let summary = `*RINGKASAN:* \n`;
-            summary += `➕ Pemasukan: ${formatCurrency(totalIncome)}\n`;
-            summary += `➖ Pengeluaran: ${formatCurrency(totalExpense)}\n`;
+            summary += ` Pemasukan: ${formatCurrency(totalIncome)}\n`;
+            summary += ` Pengeluaran: ${formatCurrency(totalExpense)}\n`;
             summary += `--------------------------\n`;
             summary += `*SISA SALDO: ${formatCurrency(balance)}*\n\n`;
 

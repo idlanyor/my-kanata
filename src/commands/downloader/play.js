@@ -35,23 +35,13 @@ export default {
                 caption: caption 
             }, { quoted: m });
 
-            // console.log(`[DEBUG] Fetching from KanataAPI using /youtube/download for URL: ${video.url}`);
+            // console.log(`[DEBUG] Fetching from KanataAPI using /youtube2/download-audio for URL: ${video.url}`);
             let data = null;
             
             try {
-                data = await fetchAPI('/youtube/download', { url: video.url });
+                data = await fetchAPI('/youtube2/download-audio', { url: video.url });
             } catch (e) {
-                // console.log(`[DEBUG] /youtube/download error: ${e.message}`);
-            }
-
-            // If /youtube/download failed or didn't return success, try /youtube/download-audio
-            if (!data || data.status !== 'success') {
-                // console.log(`[DEBUG] /youtube/download failed, trying /youtube/download-audio fallback...`);
-                try {
-                    data = await fetchAPI('/youtube/download-audio', { url: video.url });
-                } catch (e) {
-                    // console.log(`[DEBUG] /youtube/download-audio error: ${e.message}`);
-                }
+                console.error(`[DEBUG] /youtube2/download-audio error: ${e.message}`);
             }
 
             if (!data || data.status !== 'success' || !data.full_url) {

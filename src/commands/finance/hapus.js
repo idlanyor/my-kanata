@@ -18,7 +18,7 @@ export default {
                     return m.reply('Transaksi tidak ditemukan atau ID salah. Pastikan kamu hanya menghapus transaksimu sendiri.');
                 }
 
-                return m.reply(`✅ Berhasil menghapus transaksi:\n\n*${deleted.description}* - Rp ${new Intl.NumberFormat('id-ID').format(deleted.amount)}`);
+                return m.reply(` Berhasil menghapus transaksi:\n\n*${deleted.description}* - Rp ${new Intl.NumberFormat('id-ID').format(deleted.amount)}`);
             }
 
             // Jika tidak ada argumen, hapus transaksi TERAKHIR milik user tersebut
@@ -33,7 +33,7 @@ export default {
 
             const amountFormatted = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(lastTx.amount);
             
-            await m.reply(`✅ *TRANSAKSI TERAKHIR DIHAPUS*\n\n*Keterangan:* ${lastTx.description}\n*Nominal:* ${amountFormatted}\n*Kategori:* ${lastTx.category}\n\n_Gunakan ".laporan" untuk melihat daftar lengkap._`);
+            await m.reply(` *TRANSAKSI TERAKHIR DIHAPUS*\n\n*Keterangan:* ${lastTx.description}\n*Nominal:* ${amountFormatted}\n*Kategori:* ${lastTx.category}\n\n_Gunakan ".laporan" untuk melihat daftar lengkap._`);
 
         } catch (error) {
             console.error('Hapus Error:', error);

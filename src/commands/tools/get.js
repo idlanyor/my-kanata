@@ -1,0 +1,59 @@
+import axios from 'axios';
+
+export default {
+    name: 'get',
+    aliases: ['get'],
+    description: 'Make a GET request to a URL',
+    category: 'Tools',
+    execute: async (sock, m, args, text) => {
+        if (!text) return m.reply('Please provide a URL.');
+        
+        let url = text.trim();
+        if (!url.startsWith('http')) url = 'https://' + url;
+
+        await m.reply(`Fetching: ${url}...`);
+
+        try {
+            const response = await axios.get(url, { 
+                timeout: 30000, // Increased timeout for media
+                responseType: 'arraybuffer' 
+            });
+            
+            const contentType = response.headers['content-type'] || '';
+            const buffer = response.data;
+            
+            console.log(`[DEBUG] GET ${url} - Type: ${contentType} - Size: ${buffer.length}`);
+
+            if (contentType.includes('image')) {
+                await sock.sendMessage(m.chat, { image: buffer, caption: `Status: ${response.status} ${response.statusText}` }, { quoted: m });
+            } else if (contentType.includes('video')) {
+                await sock.sendMessage(m.chat, { video: buffer, caption: `Status: ${response.status} ${response.statusText}`, mimetype: contentType }, { quoted: m });
+            } else if (contentType.includes('audio')) {
+                await sock.sendMessage(m.chat, { audio: buffer, mimetype: contentType }, { quoted: m });
+            } else if (contentType.includes('application/json') || contentType.includes('text')) {
+                const textData = buffer.toString('utf-8');
+                let result = textData;
+                try {
+                    const json = JSON.parse(textData);
+                    result = JSON.stringify(json, null, 2);
+                } catch (e) {
+                    result = textData.slice(0, 4000); // Limit text length
+                }
+                await m.reply(` *Response:* \n${result}`);
+            } else {
+                 // Send as document for other types
+                 const ext = contentType.split('/')[1]?.split(';')[0] || 'bin';
+                 await sock.sendMessage(m.chat, { 
+                     document: buffer, 
+                     mimetype: contentType,
+                     fileName: `response.${ext}`,
+                     caption: `Status: ${response.status} ${response.statusText}`
+                 }, { quoted: m });
+            }
+
+        } catch (err) {
+            console.error(`[DEBUG] GET request failed:`, err.message);
+            await m.reply(` *Error:* ${err.message}`);
+        }
+    }
+};

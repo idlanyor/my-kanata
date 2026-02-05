@@ -1,0 +1,99 @@
+import User from '../../database/models/User.js';
+import Transaction from '../../database/models/Transaction.js';
+import { createPteroServer } from '../../lib/pterodactyl.js';
+import { settings } from '../../config/settings.js';
+
+const plans = [
+    { id: 1, name: '100%', ram: 2048, disk: 3072, cpu: 100, price: 10000, desc: '2 GB RAM · 3 GB Storage' },
+    { id: 2, name: '200%', ram: 4096, disk: 5120, cpu: 200, price: 15000, desc: '4 GB RAM · 5 GB Storage' },
+    { id: 3, name: '300%', ram: 6144, disk: 7168, cpu: 300, price: 20000, desc: '6 GB RAM · 7 GB Storage' },
+    { id: 4, name: '400%', ram: 8192, disk: 10240, cpu: 400, price: 25000, desc: '8 GB RAM · 10 GB Storage' },
+    { id: 5, name: '500%', ram: 12288, disk: 12288, cpu: 500, price: 30000, desc: '12 GB RAM · 12 GB Storage' },
+    { id: 6, name: '600%', ram: 13312, disk: 20480, cpu: 600, price: 35000, desc: '13 GB RAM · 20 GB Storage' },
+    { id: 7, name: '700%', ram: 15360, disk: 25600, cpu: 700, price: 50000, desc: '15 GB RAM · 25 GB Storage' },
+];
+
+export default {
+    name: 'store',
+    aliases: ['buy', 'ptero'],
+    description: 'Pterodactyl VPS Store',
+    category: 'Utility',
+    execute: async (sock, m, args, text) => {
+        const subCommand = args[0]?.toLowerCase();
+
+        if (subCommand === 'buy') {
+            const planId = parseInt(args[1]);
+            const plan = plans.find(p => p.id === planId);
+
+            if (!plan) {
+                return m.reply(`Invalid Plan ID. Use ${settings.prefix}store to see available plans.`);
+            }
+
+            // Get user from DB
+            let user = await User.findOne({ jid: m.sender });
+            if (!user) {
+                user = await User.create({ jid: m.sender });
+            }
+
+            if (user.balance < plan.price) {
+                return m.reply(`Insufficient balance.\nYour Balance: Rp ${user.balance.toLocaleString()}\nPrice: Rp ${plan.price.toLocaleString()}\n\nPlease contact owner to topup.`);
+            }
+
+            await m.reply(`Processing your order for ${plan.name} VPS...`);
+
+            try {
+                // 1. Create Server on Pterodactyl
+                const server = await createPteroServer(m.sender, plan);
+
+                // 2. Deduct Balance
+                user.balance -= plan.price;
+                await user.save();
+
+                // 3. Record Transaction
+                await Transaction.create({
+                    userId: m.sender,
+                    userName: m.pushName || 'User',
+                    type: 'expense',
+                    amount: plan.price,
+                    category: 'Utility',
+                    description: `Purchased Ptero VPS Plan ${plan.name} (ID: ${server.id})`
+                });
+
+                const successMsg = `Success Purchased VPS!\n\n` +
+                    `Plan: ${plan.name}\n` +
+                    `Price: Rp ${plan.price.toLocaleString()}\n` +
+                    `Remaining Balance: Rp ${user.balance.toLocaleString()}\n\n` +
+                    `Server Details:\n` +
+                    `ID: ${server.id}\n` +
+                    `Identifier: ${server.identifier}\n` +
+                    `Name: ${server.name}\n\n` +
+                    `Please check your email/panel for access details.`;
+
+                await m.reply(successMsg);
+
+            } catch (error) {
+                console.error(error);
+                await m.reply(`Failed to process order: ${error.message}`);
+            }
+            return;
+        }
+
+        // Show Pricelist
+        let storeMsg = `*PTERODACTYL VPS STORE*\n\n`;
+        plans.forEach(p => {
+            storeMsg += `*${p.id}. Plan ${p.name}*\n`;
+            storeMsg += `Price: Rp ${p.price.toLocaleString()}\n`;
+            storeMsg += `Specs: ${p.desc}\n`;
+            storeMsg += `--------------------------\n`;
+        });
+
+        storeMsg += `\nTo buy, use: ${settings.prefix}buy <id>\nExample: ${settings.prefix}buy 1`;
+        
+        // Add user balance info
+        const user = await User.findOne({ jid: m.sender });
+        const balance = user ? user.balance : 0;
+        storeMsg += `\n\nYour Balance: Rp ${balance.toLocaleString()}`;
+
+        await m.reply(storeMsg);
+    }
+};

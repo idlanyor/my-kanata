@@ -12,7 +12,7 @@ export default {
         
         try {
             // console.log(`[DEBUG] Fetching audio API for: ${text}`);
-            const data = await fetchAPI('/youtube/download-audio', { url: text });
+            const data = await fetchAPI('/youtube2/download-audio', { url: text });
             
             if (data.status !== 'success' || !data.full_url) {
                 // console.log(`[DEBUG] ytmp3 API Failure:`, data);

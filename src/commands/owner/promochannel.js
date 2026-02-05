@@ -1,0 +1,35 @@
+export default {
+    name: 'promochannel',
+    aliases: ['pc', 'promosi'],
+    description: 'Kirim pesan dengan label diteruskan dari Saluran',
+    category: 'Owner',
+    execute: async (sock, m, args, text) => {
+        if (!text) return m.reply('Format: .promochannel Pesan Promosi Lu');
+
+        // Data Saluran Lu (Hasil .ceknews tadi)
+        const newsJid = '120363305152329358@newsletter';
+        const newsName = 'AntiDonasi Creative | Rumah Kanata & Kachina';
+
+        try {
+            await sock.sendMessage(m.chat, {
+                text: text,
+                contextInfo: {
+                    // Ini kunci buat munculin label "Diteruskan"
+                    forwardingScore: 999,
+                    isForwarded: true
+                },
+                // Ini properti custom yang kita pasang di core tadi
+                newsletterForward: {
+                    jid: newsJid,
+                    name: newsName,
+                    serverId: 100 // ID pesan palsu
+                }
+            });
+            
+            console.log(`[DEBUG] Promo Channel sent to ${m.chat}`);
+        } catch (err) {
+            console.error(err);
+            m.reply('Gagal mengirim promo saluran.');
+        }
+    }
+};
