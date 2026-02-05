@@ -25,6 +25,18 @@ const settingSchema = new mongoose.Schema({
     privateAiPersona: {
         type: String,
         default: 'Kamu adalah KanataBot, asisten pribadi AI yang cerdas.'
+    },
+    mustJoinGroup: {
+        type: Boolean,
+        default: false
+    },
+    smartMode: {
+        type: Boolean,
+        default: false
+    },
+    groupInviteLink: {
+        type: String,
+        default: 'https://chat.whatsapp.com/I5JCuQnIo4f79JsZAGCvDD'
     }
 });
 

@@ -81,6 +81,15 @@ export const messageHandler = async (sock, m) => {
         const botLid = sock.user.lid ? decodeJid(sock.user.lid) : null;
         const isOwner = [ownerJid, ownerLid, botJid, botLid].includes(m.sender);
 
+        // --- SMART MODE: TRACK OWNER ACTIVITY ---
+        if (isOwner && !m.key.fromMe) { 
+            // Note: fromMe check is tricky if bot is used as self-bot on owner's number.
+            // If message is SENT BY ME (fromMe=true), update activity.
+        }
+        if (m.key.fromMe) {
+            global.lastOwnerActivity = Date.now();
+        }
+
         // 5. Pre-Processing Logic (Anti-Link, Anti-Toxic, Anti-Edit)
         if (await handlePreProcessing(sock, m, groupData, isOwner)) return;
 
@@ -89,6 +98,28 @@ export const messageHandler = async (sock, m) => {
 
         // 7. Command Parsing
         if (m.key.fromMe && botSettings.mode !== 'self') return;
+
+        // --- JOIN GROUP REQUIREMENT (Experimental) ---
+        if (!m.isGroup && !isOwner && botSettings.mustJoinGroup) {
+            try {
+                // Get Group JID from Invite Link if not cached
+                if (!global.targetGroupJid) {
+                    const code = botSettings.groupInviteLink.split('chat.whatsapp.com/')[1];
+                    const groupInfo = await sock.groupGetInviteInfo(code);
+                    global.targetGroupJid = groupInfo.id;
+                }
+
+                // Check if user is member
+                const groupMetadata = await sock.groupMetadata(global.targetGroupJid);
+                const isMember = groupMetadata.participants.some(p => p.id === m.sender);
+
+                if (!isMember) {
+                    return m.reply(`*AKSES DITOLAK*\n\nMaaf @${m.sender.split('@')[0]}, untuk menggunakan bot ini di Private Chat, kamu wajib bergabung ke grup official kami terlebih dahulu.\n\n*Link Grup:* ${botSettings.groupInviteLink}\n\nSetelah bergabung, silakan coba lagi!`, { mentions: [m.sender] });
+                }
+            } catch (e) {
+                console.error('Error in Join Group Check:', e);
+            }
+        }
         
         const prefixes = [settings.prefix, '.', '!', '/'];
         const usedPrefix = prefixes.find(p => m.body.startsWith(p));
@@ -124,9 +155,27 @@ export const messageHandler = async (sock, m) => {
 
         // Auto-AI Logic (Private Chat Only)
         if (!usedPrefix && !m.isGroup && botSettings?.autoAiPrivate && !m.key.fromMe) {
-            const isMedia = m.isImage || m.isVideo || m.isAudio;
+            
+            // --- SMART MODE CHECK ---
+            if (botSettings.smartMode) {
+                const lastActivity = global.lastOwnerActivity || 0;
+                // Jika owner aktif dalam 2 menit terakhir (120000ms), bot DIAM.
+                if (Date.now() - lastActivity < 120000) return;
+            }
+
+            const isMedia = m.isImage;
             if (m.body || isMedia) {
+                // --- NATURAL TYPING SIMULATION ---
                 await sock.sendPresenceUpdate('composing', m.chat);
+                
+                // Calculate delay based on message length (min 2s, max 10s)
+                // Anggap butuh 50ms per karakter + random variance
+                const textLength = m.body?.length || 50;
+                const typingDelay = Math.min(Math.max(textLength * 50, 2000), 10000);
+                
+                // Wait for the delay
+                await new Promise(resolve => setTimeout(resolve, typingDelay));
+
                 try {
                     let fileUri = null;
                     let fileMime = null;
@@ -134,19 +183,19 @@ export const messageHandler = async (sock, m) => {
 
                     if (isMedia) {
                         const buffer = await m.download();
-                        const ext = m.isImage ? '.jpg' : (m.isVideo ? '.mp4' : '.mp3');
-                        const fileName = `${Date.now()}${ext}`;
+                        const fileName = `${Date.now()}.jpg`;
                         tempPath = `./${fileName}`;
                         fs.writeFileSync(tempPath, buffer);
 
-                        const uploadResult = await uploadFileToGemini(tempPath, m.msg.mimetype || (m.isImage ? 'image/jpeg' : (m.isVideo ? 'video/mp4' : 'audio/mp3')));
+                        const uploadResult = await uploadFileToGemini(tempPath, m.msg.mimetype || 'image/jpeg');
                         fileUri = uploadResult.uri;
                         fileMime = uploadResult.mimeType;
                     }
 
-                    const prompt = m.body || (m.isImage ? 'Analyze this image.' : (m.isVideo ? 'Analyze this video.' : 'Analyze this audio.'));
+                    const prompt = m.body || 'Analyze this image.';
                     const response = await generateAIResponse(prompt, fileUri, fileMime, botSettings.privateAiPersona);
                     await m.reply(response);
+                    await sock.sendPresenceUpdate('paused', m.chat);
 
                     if (tempPath && fs.existsSync(tempPath)) {
                         fs.unlinkSync(tempPath);
