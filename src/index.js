@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { makeWASocket, useMultiFileAuthState, DisconnectReason, Browsers, makeCacheableSignalKeyStore } from '@whiskeysockets/baileys';
 import pino from 'pino';
+import qrcode from 'qrcode-terminal';
 import readline from 'readline';
 import fs from 'fs';
 import path from 'path';
@@ -46,10 +47,22 @@ const cleanupAuth = async () => {
 const startBot = async () => {
     await connectDB();
     await loadCommands();
-    await cleanupAuth();
-    setInterval(cleanupAuth, 60 * 60 * 1000);
+    // await cleanupAuth(); // CAUTION: Deleting auth files causes 'Decrypted message with closed session'
+    // setInterval(cleanupAuth, 60 * 60 * 1000);
 
     const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
+    
+    let usePairingCode = false;
+    const isLogged = state.creds.me || state.creds.registered;
+    
+    if (!isLogged) {
+        console.clear();
+        console.log('\x1b[36m%s\x1b[0m', '--- KANATA BOT AUTHENTICATION ---');
+        console.log('1. QR Code');
+        console.log('2. Pairing Code');
+        const choice = await question('Pilih metode login (1/2): ');
+        usePairingCode = choice === '2';
+    }
 
     const connectToWhatsApp = async () => {
         const sock = makeWASocket({
@@ -68,7 +81,6 @@ const startBot = async () => {
             retryRequestDelayMs: 500,
             
             // Sync & History
-            syncFullHistory: false,
             shouldSyncHistoryMessage: () => false,
             
             // Connection Keep-Warm
@@ -95,8 +107,7 @@ const startBot = async () => {
         }
 
         // Pairing Code Setup
-        if (!sock.authState.creds.registered) {
-            console.clear();
+        if (usePairingCode && !sock.authState.creds.registered) {
             console.log('\x1b[36m%s\x1b[0m', '--- KANATA BOT PAIRING ---');
             const phoneNumber = await question('Please enter your WhatsApp number (e.g. 628123456789): ');
             const code = await sock.requestPairingCode(phoneNumber.trim());
@@ -106,6 +117,13 @@ const startBot = async () => {
         // Connection Handler
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
+
+            if (qr && !usePairingCode) {
+                console.clear();
+                console.log('\x1b[36m%s\x1b[0m', '--- SCAN QR CODE ---');
+                qrcode.generate(qr, { small: true });
+                console.log('Silakan scan QR di atas untuk login.');
+            }
 
             if (connection === 'close') {
                 const statusCode = lastDisconnect.error?.output?.statusCode;
@@ -119,7 +137,7 @@ const startBot = async () => {
                     logger.error(' Logged out. Manual intervention required.');
                 }
             } else if (connection === 'open') {
-                console.log('\x1b[32m%s\x1b[0m', '✅ SUCCESS: Bot is now connected to WhatsApp!');
+                logger.success('Bot is now connected to WhatsApp!', 'SYSTEM');
             }
         });
 
@@ -136,7 +154,7 @@ const startBot = async () => {
             for (const m of messages) {
                 // Global Debug Log
                 if (m.key.remoteJid === 'status@broadcast') {
-                    console.log(`[DEBUG] Incoming Status from: ${m.key.participant} (Type: ${type})`);
+                    logger.debug(`Incoming Status from: ${m.key.participant}`, 'STATUS');
                 }
                 
                 // Jangan batasi hanya 'notify' untuk status, karena kadang status masuk sebagai 'append'

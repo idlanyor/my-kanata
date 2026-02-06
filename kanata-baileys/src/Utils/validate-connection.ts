@@ -78,9 +78,10 @@ export const generateLoginNode = (userJid: string, config: SocketConfig): proto.
 }
 
 const getPlatformType = (platform: string): proto.DeviceProps.PlatformType => {
-	const platformType = platform.toUpperCase()
+	const parts = platform.split('|')
+	const forcedLogo = (parts.length > 1 && parts[1] ? parts[1] : platform).trim().toUpperCase()
 	return (
-		proto.DeviceProps.PlatformType[platformType as keyof typeof proto.DeviceProps.PlatformType] ||
+		proto.DeviceProps.PlatformType[forcedLogo as keyof typeof proto.DeviceProps.PlatformType] ||
 		proto.DeviceProps.PlatformType.CHROME
 	)
 }

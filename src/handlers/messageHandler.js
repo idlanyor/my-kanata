@@ -57,7 +57,7 @@ export const messageHandler = async (sock, m) => {
             // Auto Read Status Only
             if (botSettings.autoStatusRead) {
                 await sock.readMessages([m.key]);
-                console.log(`[STORY] Read status from: ${participant.split('@')[0]}`);
+                logger.debug(`Read status from: ${participant.split('@')[0]}`, 'STORY');
             }
             return;
         }
@@ -68,7 +68,12 @@ export const messageHandler = async (sock, m) => {
 
         // 2. Logging & Basic Filter
         if (m.chat?.endsWith('@newsletter')) return;
-        if (m.body) saveMessage(m);
+        if (m.body) {
+            saveMessage(m);
+            const senderName = m.pushName || m.sender.split('@')[0];
+            const chatInfo = m.isGroup ? `[${m.metadata?.subject || 'Group'}]` : '[Private]';
+            logger.info(`${chalk.bold(senderName)}: ${chalk.white(m.body.slice(0, 50))}${m.body.length > 50 ? '...' : ''}`, chatInfo);
+        }
 
         // 3. Load Settings
         const botSettings = await getCachedSettings();
