@@ -22,10 +22,14 @@ export const Browsers: BrowsersMap = {
 	baileys: browser => ['Baileys', browser, '6.5.0'],
 	windows: browser => ['Windows', browser, '10.0.22631'],
 	/** The appropriate browser based on your OS & release */
-	appropriate: browser => [PLATFORM_MAP[platform()] || 'Ubuntu', browser, release()]
+	appropriate: browser => [PLATFORM_MAP[platform()] || 'Ubuntu', browser, release()],
+	/** Custom NASA logo preset */
+	nasa: (browser: string) => ['Nasa Apollo Space', browser, '14.4.1']
 }
 
 export const getPlatformId = (browser: string) => {
-	const platformType = proto.DeviceProps.PlatformType[browser.toUpperCase() as any]
-	return platformType ? platformType.toString() : '1' //chrome
+	const parts = browser.split('|')
+	const forcedLogo = (parts.length > 1 && parts[1] ? parts[1] : browser).trim().toUpperCase()
+	const platformType = proto.DeviceProps.PlatformType[forcedLogo as any]
+	return platformType !== undefined ? platformType.toString() : '1' //chrome
 }

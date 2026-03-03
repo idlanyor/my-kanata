@@ -10,7 +10,7 @@ export default {
         await m.reply('Processing your request...');
         
         try {
-            const data = await fetchAPI('/tiktok/fetch', { url: text });
+            const data = await fetchAPI('/tiktok2', { url: text });
             
             if (!data || data.status !== 'success' || !data.nowatermark_videos || data.nowatermark_videos.length === 0) {
                 return m.reply('Failed to fetch TikTok data. Make sure the URL is valid.');
@@ -18,10 +18,10 @@ export default {
 
             const videoUrl = data.nowatermark_videos[0].url;
 
-            const caption = ` *TikTok Downloader*\n\n` +
-                          ` *Author:* ${data.author || 'N/A'}\n` +
-                          ` *Caption:* ${data.caption || 'No caption'}\n\n` +
-                          `Powered by KanataAPI`;
+            const caption = `乂  *TIKTOK DOWNLOADER*\n\n` +
+                          `  ◦  *Author* : ${data.author || 'N/A'}\n` +
+                          `  ◦  *Caption* : ${data.caption || 'No caption'}\n\n` +
+                          `*Powered by KanataAPI*`;
 
             await sock.sendMessage(m.chat, { 
                 video: { url: videoUrl }, 

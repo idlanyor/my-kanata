@@ -1,3 +1,5 @@
+import { jidNormalizedUser } from '@whiskeysockets/baileys';
+
 export default {
     name: 'hidetag',
     aliases: ['ht', 'tagall'],
@@ -9,7 +11,7 @@ export default {
         const groupMetadata = await sock.groupMetadata(m.chat);
         const participants = groupMetadata.participants;
         
-        const userAdmin = participants.find(p => p.id === m.sender);
+        const userAdmin = participants.find(p => jidNormalizedUser(p.id) === jidNormalizedUser(m.sender));
         const isAdmin = userAdmin && (userAdmin.admin === 'admin' || userAdmin.admin === 'superadmin');
         
         // console.log(`[DEBUG] Hidetag - Chat: ${m.chat}, Sender: ${m.sender}, isAdmin: ${userAdmin?.admin}`);

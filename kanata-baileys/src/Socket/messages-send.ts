@@ -1042,7 +1042,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
                                 const nativeFlow = msg.interactiveMessage?.nativeFlowMessage
                                 const firstButtonName = nativeFlow?.buttons?.[0]?.name
                                 const nativeFlowSpecials = [
-                                    'mpm', 'cta_catalog', 'send_location',
+                                    'mpm', 'cta_catalog', 'send_location', 'single_select', 'cta_url', 'quick_reply',
                                     'call_permission_request', 'wa_payment_transaction_details',
                                     'automated_greeting_message_view_catalog'
                                 ]
@@ -1065,7 +1065,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
                                         content: [{
                                             tag: 'interactive',
                                             attrs: { type: 'native_flow', v: '1' },
-                                            content: [{ tag: 'native_flow', attrs: { v: '2', name: firstButtonName } }]
+                                            content: [{ tag: 'native_flow', attrs: { v: '4', name: firstButtonName } }]
                                         }, 
                                         {
                                             tag: 'quality_control', 
@@ -1083,7 +1083,7 @@ export const makeMessagesSocket = (config: SocketConfig) => {
                                         content: [{
                                             tag: 'interactive', 
                                             attrs: { type: 'native_flow', v: '1' }, 
-                                            content: [{ tag: 'native_flow', attrs: { v: '9', name: 'mixed' } }]
+                                            content: [{ tag: 'native_flow', attrs: { v: '4', name: 'mixed' } }]
                                         }, 
                                         {
                                             tag: 'quality_control', 

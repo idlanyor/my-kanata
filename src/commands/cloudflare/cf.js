@@ -5,7 +5,7 @@ export default {
     name: 'cf',
     aliases: ['cfban', 'cfunban', 'cfwhitelist', 'cflist'],
     description: 'Cloudflare Account Firewall Management',
-    category: 'Panel',
+    category: 'Cloudflare',
     execute: async (sock, m, args, text) => {
         // Security: Owner Only
         const sender = m.sender;

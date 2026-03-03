@@ -4,7 +4,7 @@ import { settings } from '../../config/settings.js';
 export default {
     name: 'cfwhitelist',
     description: 'Whitelist IP in Cloudflare',
-    category: 'Panel',
+    category: 'Cloudflare',
     execute: async (sock, m, args) => {
         const sender = m.sender;
         const isOwner = sender === settings.ownerNumber || sender === settings.ownerLid || sender.split(':')[0] === settings.ownerNumber.split('@')[0];

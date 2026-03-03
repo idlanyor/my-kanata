@@ -16,7 +16,7 @@ const ptero = axios.create({
 export default {
     name: 'bind',
     description: 'Bind your existing Pterodactyl account to your WhatsApp number',
-    category: 'Utility',
+    category: 'Panel',
     execute: async (sock, m, args, text) => {
         const email = args[0];
         if (!email || !email.includes('@')) {

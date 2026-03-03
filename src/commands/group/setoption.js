@@ -1,3 +1,4 @@
+import { jidNormalizedUser } from '@whiskeysockets/baileys';
 import Group from '../../database/models/Group.js';
 import { clearSettingsCache } from '../../handlers/messageHandler.js';
 
@@ -12,7 +13,7 @@ export default {
         // Cek Admin
         const groupMetadata = await sock.groupMetadata(m.chat);
         const participants = groupMetadata.participants;
-        const isAdmin = participants.find(p => p.id === m.sender && (p.admin === 'admin' || p.admin === 'superadmin'));
+        const isAdmin = participants.find(p => jidNormalizedUser(p.id) === jidNormalizedUser(m.sender) && (p.admin === 'admin' || p.admin === 'superadmin'));
         
         if (!isAdmin) return m.reply('Hanya admin grup yang bisa menggunakan perintah ini!');
 

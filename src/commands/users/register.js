@@ -9,7 +9,13 @@ export default {
     category: 'Utility',
     execute: async (sock, m, args, text) => {
         const email = args[0];
-        const username = m.pushName?.replace(/\s+/g, '').toLowerCase() || `user${m.sender.split('@')[0].slice(-4)}`;
+        const senderSeed = m.sender.split('@')[0].slice(-4);
+        const rawName = String(m.pushName || '').toLowerCase();
+        const cleaned = rawName
+            .replace(/[^a-z0-9._-]+/g, '')
+            .replace(/^[^a-z0-9]+/, '')
+            .replace(/[^a-z0-9]+$/, '');
+        const usernameBase = cleaned || `user${senderSeed}`;
 
         if (!email || !email.includes('@')) {
             return m.reply(`Usage: ${settings.prefix}register <email>\nExample: ${settings.prefix}register buyer@gmail.com`);
@@ -29,7 +35,7 @@ export default {
 
             // 3. Create User in Pterodactyl
             const newUser = await createPteroUser({
-                username: `${username}${crypto.randomBytes(2).toString('hex')}`, // Unique username
+                username: `${usernameBase.slice(0, 12)}${crypto.randomBytes(2).toString('hex')}`, // Unique + valid username
                 email: email,
                 firstName: m.pushName || 'WhatsApp',
                 lastName: 'User',

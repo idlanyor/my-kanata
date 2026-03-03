@@ -1,5 +1,6 @@
 import { setServerPowerState, getServerResources, getUserServers } from '../../lib/pterodactyl.js';
 import { settings } from '../../config/settings.js';
+import Server from '../../database/models/Server.js';
 
 export default {
     name: 'panel',
@@ -25,8 +26,12 @@ export default {
 
             if (action === 'status' || action === 'info') {
                 const resources = await getServerResources(id);
+                const dbSrv = await Server.findOne({ identifier: id });
+                const expiredStr = dbSrv ? dbSrv.expiredAt.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Indefinite';
+
                 const statusMsg = `*SERVER STATUS: ${server.name}*\n\n` +
                     `State: ${resources.current_state}\n` +
+                    `Expired: ${expiredStr}\n` +
                     `CPU Usage: ${(resources.resources.cpu_absolute).toFixed(2)}%\n` +
                     `Memory: ${(resources.resources.memory_bytes / 1024 / 1024).toFixed(2)} MB\n` +
                     `Disk: ${(resources.resources.disk_bytes / 1024 / 1024).toFixed(2)} MB\n` +

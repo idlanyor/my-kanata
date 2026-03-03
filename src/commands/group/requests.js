@@ -1,3 +1,5 @@
+import { jidNormalizedUser } from '@whiskeysockets/baileys';
+
 export default [
     {
         name: 'listpending',
@@ -8,7 +10,7 @@ export default [
             if (!m.isGroup) return m.reply('Hanya bisa di grup!');
             
             const groupMetadata = await sock.groupMetadata(m.chat);
-            const isAdmin = groupMetadata.participants.find(p => p.id === m.sender && (p.admin || p.id === groupMetadata.owner));
+            const isAdmin = groupMetadata.participants.find(p => jidNormalizedUser(p.id) === jidNormalizedUser(m.sender) && (p.admin || p.id === groupMetadata.owner));
             if (!isAdmin) return m.reply('Hanya admin yang bisa liat daftar pending!');
 
             try {
@@ -38,7 +40,7 @@ export default [
             if (!m.isGroup) return m.reply('Hanya bisa di grup!');
             
             const groupMetadata = await sock.groupMetadata(m.chat);
-            const isAdmin = groupMetadata.participants.find(p => p.id === m.sender && (p.admin || p.id === groupMetadata.owner));
+            const isAdmin = groupMetadata.participants.find(p => jidNormalizedUser(p.id) === jidNormalizedUser(m.sender) && (p.admin || p.id === groupMetadata.owner));
             if (!isAdmin) return m.reply('Hanya admin yang bisa approve!');
 
             let target = args[0]?.replace(/[^0-9]/g, '');
@@ -64,7 +66,7 @@ export default [
             if (!m.isGroup) return m.reply('Hanya bisa di grup!');
             
             const groupMetadata = await sock.groupMetadata(m.chat);
-            const isAdmin = groupMetadata.participants.find(p => p.id === m.sender && (p.admin || p.id === groupMetadata.owner));
+            const isAdmin = groupMetadata.participants.find(p => jidNormalizedUser(p.id) === jidNormalizedUser(m.sender) && (p.admin || p.id === groupMetadata.owner));
             if (!isAdmin) return m.reply('Hanya admin yang bisa reject!');
 
             let target = args[0]?.replace(/[^0-9]/g, '');

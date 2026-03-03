@@ -1,0 +1,12 @@
+import mongoose from 'mongoose';
+
+const userSchema = new mongoose.Schema({
+    jid: { type: String, required: true, unique: true },
+    name: { type: String, default: '' },
+    role: { type: String, default: 'viewer', enum: ['viewer', 'admin', 'owner', 'user'] },
+    balance: { type: Number, default: 0 },
+    emailCloud: { type: String, default: '' },
+    createdAt: { type: Date, default: Date.now }
+});
+
+export const User = mongoose.model('User', userSchema);

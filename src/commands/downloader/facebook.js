@@ -2,6 +2,7 @@ import { fetchAPI } from '../../lib/api.js';
 
 export default {
     name: 'fb',
+    category:'Downloader',
     aliases: ['fb', 'fbdl'],
     description: 'Download Facebook video',
     execute: async (sock, m, args, text) => {

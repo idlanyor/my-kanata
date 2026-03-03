@@ -867,7 +867,7 @@ export const generateWAMessageContent = async (
                         m = await prepareWAMessageMedia(message as any, options)
                 }
         
-                if (hasOptionalProperty(message, 'viewOnce') && !!message.viewOnce) {		m = { viewOnceMessage: { message: m } }
+                if ((hasOptionalProperty(message, 'viewOnce') && !!message.viewOnce) || ((!!m.interactiveMessage || !!m.listMessage) && !m.viewOnceMessage)) {		m = { viewOnceMessage: { message: m } }
 	}
 
 	if (hasOptionalProperty(message, 'mentions') && message.mentions?.length) {

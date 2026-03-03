@@ -4749,7 +4749,7 @@ levn@~0.3.0:
     prelude-ls "~1.1.2"
     type-check "~0.3.2"
 
-"libsignal@git+https://github.com/AntiDonasi/libsignal-node":
+"libsignal@npm:@itsukichan/libsignal-node":
   version "1.0.0"
   resolved "git+ssh://git@github.com/AntiDonasi/libsignal-node.git#7c1edc56e56d26282c5de73fde5aebd8cc07cd0e"
   dependencies:
