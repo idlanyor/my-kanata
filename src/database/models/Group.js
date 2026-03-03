@@ -62,6 +62,30 @@ const groupSchema = new mongoose.Schema({
         type: String,
         default: 'Selamat tinggal @user, semoga tenang di sana!'
     },
+    autoOpen: {
+        type: Boolean,
+        default: false
+    },
+    autoClose: {
+        type: Boolean,
+        default: false
+    },
+    autoOpenTime: {
+        type: String,
+        default: '05:00'
+    },
+    autoCloseTime: {
+        type: String,
+        default: '22:00'
+    },
+    lastAutoOpenAt: {
+        type: String,
+        default: ''
+    },
+    lastAutoCloseAt: {
+        type: String,
+        default: ''
+    },
     createdAt: {
         type: Date,
         default: Date.now

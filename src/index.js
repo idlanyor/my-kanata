@@ -16,6 +16,7 @@ import Group from './database/models/Group.js';
 import User from './database/models/User.js';
 import axios from 'axios';
 import { startPrayerScheduler } from './lib/prayerScheduler.js';
+import { startGroupScheduler } from './lib/groupScheduler.js';
 import { botSocket } from './lib/socket.js';
 import { startWebhookApi } from './lib/webhookApi.js';
 
@@ -204,6 +205,10 @@ const startBot = async () => {
                     }
 
         startPrayerScheduler(sock);
+        if (!global.isGroupSchedulerStarted) {
+            startGroupScheduler(() => activeSocket);
+            global.isGroupSchedulerStarted = true;
+        }
 
         if (phoneNumber && !sock.authState.creds.registered) {
             setTimeout(async () => {
