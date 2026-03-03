@@ -1,3 +1,5 @@
+import { jidNormalizedUser } from '@whiskeysockets/baileys';
+
 export default {
     name: 'kick',
     description: 'Kick a member from the group',

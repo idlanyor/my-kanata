@@ -142,12 +142,12 @@ export const createPteroServer = async (userJid, plan) => {
         // 2. Create Server
         // You'll need to configure these default IDs based on your panel
         const serverData = {
-            name: `${username}-${plan.name}`,
+            name: `${pteroUser.username}-${plan.name}`,
             user: pteroUser.id,
             nest: parseInt(process.env.PTERO_NEST_ID) || 1,
             egg: parseInt(process.env.PTERO_EGG_ID) || 1,
-            docker_image: 'ghcr.io/pterodactyl/yolks:nodejs_18',
-            startup: 'if [[ -d .git ]]; then git pull; fi; if [[ ! -z ${NODE_PACKAGES} ]]; then /usr/local/bin/npm install ${NODE_PACKAGES}; fi; /usr/local/bin/node /home/container/index.js',
+            docker_image: 'ghcr.io/shirokamiryzen/yolks:nodejs_22',
+            startup: 'if [[ -d .git ]]; then git pull; fi; if [[ ! -z ${NODE_PACKAGES} ]]; then /usr/local/bin/npm install ${NODE_PACKAGES}; fi; /usr/local/bin/node /home/container/${MAIN_FILE}',
             limits: {
                 memory: plan.ram,
                 swap: 0,
@@ -161,8 +161,16 @@ export const createPteroServer = async (userJid, plan) => {
                 backups: 0
             },
             environment: {
+                GIT_ADDRESS: '',
+                BRANCH: '',
+                USER_UPLOAD: '0',
+                AUTO_UPDATE: '0',
                 NODE_PACKAGES: '',
-                UNLINK_COUNT: '0'
+                USERNAME: '',
+                ACCESS_TOKEN: '',
+                UNNODE_PACKAGES: '',
+                MAIN_FILE: 'index.js',
+                NODE_ARGS: ''
             },
             deploy: {
                 locations: [parseInt(process.env.PTERO_LOCATION_ID) || 1],
@@ -175,10 +183,14 @@ export const createPteroServer = async (userJid, plan) => {
         const createResp = await ptero.post('/servers', serverData);
         return createResp.data.attributes;
     } catch (error) {
+        if (error.response?.data?.errors) {
+            console.error('Ptero Server Create Validation Errors:', JSON.stringify(error.response.data.errors, null, 2));
+            throw new Error(`Ptero Validation Error: ${error.response.data.errors[0].detail}`);
+        }
         console.error('Ptero Server Create Error:', error.response?.data || error.message);
         throw error;
     }
-};
+}
 
 export const getUserServers = async (userJid) => {
     try {

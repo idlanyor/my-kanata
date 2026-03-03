@@ -65,8 +65,8 @@ Question: ${prompt}` : m.quoted.text;
 
             if (!fileUri) await m.reply('Thinking...');
 
-            // Call generateAIResponse
-            const response = await generateAIResponse(prompt, fileUri, fileMime);
+            // Call generateAIResponse with m.chat for history
+            const response = await generateAIResponse(prompt, fileUri, fileMime, null, m.chat);
             
             await m.reply(response);
 

@@ -21,8 +21,19 @@ export default {
         let browser;
         try {
             browser = await puppeteer.launch({
+                executablePath: '/home/roy/.cache/puppeteer/chrome/linux-144.0.7559.96/chrome-linux64/chrome',
                 headless: 'new',
-                args: ['--no-sandbox', '--disable-setuid-sandbox']
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-accelerated-2d-canvas',
+                    '--no-first-run',
+                    '--no-zygote',
+                    '--disable-gpu',
+                    '--hide-scrollbars',
+                    '--mute-audio'
+                ]
             });
             const page = await browser.newPage();
             
@@ -30,9 +41,13 @@ export default {
             await page.setViewport({ width: 1280, height: 720 });
 
             // Go to URL and wait for network to be idle
-            await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+            await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 });
 
-            const screenshotBuffer = await page.screenshot({ type: 'png', fullPage: false });
+            const screenshotBuffer = await page.screenshot({ 
+                type: 'png', 
+                fullPage: false,
+                omitBackground: true 
+            });
 
             await sock.sendMessage(m.chat, {
                 image: screenshotBuffer,

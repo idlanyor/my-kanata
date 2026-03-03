@@ -6,7 +6,7 @@ After=network.target
 Type=simple
 User=roy
 WorkingDirectory=/home/roy/phopi/mybot
-ExecStart=/home/roy/.nvm/versions/node/v24.13.0/bin/node src/index.js
+ExecStart=/home/roy/.nvm/versions/node/v25.6.1/bin/node src/index.js
 Restart=always
 RestartSec=10
 Environment=NODE_ENV=production

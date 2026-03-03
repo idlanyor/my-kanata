@@ -8,6 +8,7 @@ import Settings from '../database/models/Settings.js';
 import Group from '../database/models/Group.js';
 import Poll from '../database/models/Poll.js';
 import Event from '../database/models/Event.js';
+import chalk from 'chalk';
 import { decryptPollVote, jidNormalizedUser } from '@whiskeysockets/baileys';
 import { createHash } from 'crypto';
 import { saveMessage, getMessage } from '../lib/msgStore.js';
@@ -26,12 +27,22 @@ const getCachedSettings = async () => {
     return settingsCache;
 };
 
-const getGroupSettings = async (jid) => {
+const getGroupSettings = async (jid, subject = '') => {
     const now = Date.now();
     const cached = groupCache.get(jid);
     if (cached && (now - cached.timestamp < 60000)) return cached.data;
-    
-    let data = await Group.findOne({ jid }) || await Group.create({ jid });
+
+    let data = await Group.findOne({ jid });
+    if (!data) {
+        data = await Group.create({ jid, name: subject || '' });
+    } else if (subject && !data.name) {
+        data = await Group.findOneAndUpdate(
+            { jid },
+            { name: subject },
+            { new: true }
+        );
+    }
+
     groupCache.set(jid, { data, timestamp: now });
     return data;
 };
@@ -77,7 +88,7 @@ export const messageHandler = async (sock, m) => {
 
         // 3. Load Settings
         const botSettings = await getCachedSettings();
-        const groupData = m.isGroup ? await getGroupSettings(m.chat) : null;
+        const groupData = m.isGroup ? await getGroupSettings(m.chat, m.metadata?.subject || '') : null;
 
         // 4. Admin & Owner Status
         const ownerJid = decodeJid(settings.ownerNumber);
@@ -85,6 +96,7 @@ export const messageHandler = async (sock, m) => {
         const botJid = decodeJid(sock.user.id);
         const botLid = sock.user.lid ? decodeJid(sock.user.lid) : null;
         const isOwner = [ownerJid, ownerLid, botJid, botLid].includes(m.sender);
+        logger.debug(`Sender: ${m.sender} | isOwner: ${isOwner}`, 'HANDLER');
 
         // --- SMART MODE: TRACK OWNER ACTIVITY ---
         if (isOwner && !m.key.fromMe) { 
@@ -128,14 +140,23 @@ export const messageHandler = async (sock, m) => {
         
         const prefixes = [settings.prefix, '.', '!', '/'];
         const usedPrefix = prefixes.find(p => m.body.startsWith(p));
+        logger.debug(`usedPrefix: ${usedPrefix} | body: ${m.body} | total commands: ${commands.size}`, 'HANDLER');
         
         if (usedPrefix) {
             const cmdName = m.body.slice(usedPrefix.length).trim().split(/\s+/)[0].toLowerCase();
             const command = commands.get(cmdName) || [...commands.values()].find(c => c.aliases?.includes(cmdName));
+            logger.debug(`cmdName: ${cmdName} | found: ${!!command}`, 'HANDLER');
 
             if (command) {
-                if (botSettings.mode === 'self' && !isOwner) return;
-                if (botSettings.mode === 'group' && !m.isGroup && !isOwner) return;
+                logger.debug(`Executing command: ${cmdName} | Mode: ${botSettings.mode} | isOwner: ${isOwner}`, 'HANDLER');
+                if (botSettings.mode === 'self' && !isOwner) {
+                    logger.debug(`Ignored: Self mode and not owner`, 'HANDLER');
+                    return;
+                }
+                if (botSettings.mode === 'group' && !m.isGroup && !isOwner) {
+                    logger.debug(`Ignored: Group mode and not in group`, 'HANDLER');
+                    return;
+                }
 
                 if (command.category === 'Owner' && !isOwner) {
                     return m.reply(' Akses Ditolak. Perintah ini hanya untuk Owner.');
@@ -198,7 +219,7 @@ export const messageHandler = async (sock, m) => {
                     }
 
                     const prompt = m.body || 'Analyze this image.';
-                    const response = await generateAIResponse(prompt, fileUri, fileMime, botSettings.privateAiPersona);
+                    const response = await generateAIResponse(prompt, fileUri, fileMime, botSettings.privateAiPersona, m.chat);
                     await m.reply(response);
                     await sock.sendPresenceUpdate('paused', m.chat);
 

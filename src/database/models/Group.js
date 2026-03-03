@@ -6,6 +6,18 @@ const groupSchema = new mongoose.Schema({
         required: true,
         unique: true
     },
+    name: {
+        type: String,
+        default: ''
+    },
+    announce: {
+        type: Boolean,
+        default: false
+    },
+    restrict: {
+        type: Boolean,
+        default: false
+    },
     antilink: {
         type: Boolean,
         default: false
@@ -29,6 +41,18 @@ const groupSchema = new mongoose.Schema({
     mute: {
         type: Boolean,
         default: false
+    },
+    prayerReminder: {
+        type: Boolean,
+        default: false
+    },
+    cityId: {
+        type: String,
+        default: '1420' // Default Purbalingga
+    },
+    cityName: {
+        type: String,
+        default: 'KAB. PURBALINGGA'
     },
     welcomeMsg: {
         type: String,

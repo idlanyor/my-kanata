@@ -6,6 +6,7 @@ const TransactionSchema = new mongoose.Schema({
     type: { type: String, enum: ['income', 'expense'], required: true },
     amount: { type: Number, required: true },
     category: { type: String, default: 'General' },
+    source: { type: String, enum: ['finance', 'store', 'smm', 'general', 'other'], default: 'other', index: true },
     description: { type: String },
     date: { type: Date, default: Date.now }
 }, { timestamps: true });

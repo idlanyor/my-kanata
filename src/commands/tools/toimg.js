@@ -2,7 +2,6 @@
 import fs from 'fs';
 import path from 'path';
 import { exec } from 'child_process';
-import { downloadContentFromMessage } from '@whiskeysockets/baileys';
 import { settings } from '../../config/settings.js';
 
 const getRandom = (ext) => {
@@ -14,44 +13,56 @@ export default {
     description: 'Convert sticker to image',
     aliases: ['toimage', 'img'],
     execute: async (sock, m, args) => {
+        let inputPath = '';
+        let outPath = '';
         try {
-            const quoted = m.quoted ? m.quoted : m;
-            const mime = quoted.mtype || '';
-            const isSticker = quoted.message?.stickerMessage;
+            const target = m.quoted || m;
+            const isSticker = !!target.isSticker;
+            const isAnimated = !!(target?.msg?.isAnimated || target?.msg?.isAvatar);
 
             if (!isSticker) {
                 return m.reply(`Reply to a sticker with *${settings.prefix}toimg*`);
             }
 
             await m.reply('Converting...');
+            const buffer = await target.download();
 
-            const stream = await downloadContentFromMessage(quoted.message.stickerMessage, 'sticker');
-            let buffer = Buffer.from([]);
-            for await (const chunk of stream) {
-                buffer = Buffer.concat([buffer, chunk]);
-            }
+            inputPath = path.resolve(getRandom('.webp'));
+            outPath = path.resolve(getRandom(isAnimated ? '.mp4' : '.png'));
+            fs.writeFileSync(inputPath, buffer);
 
-            const fileName = getRandom('.webp');
-            const outputFiles = getRandom('.png');
-            const filePath = path.join('./', fileName);
-            const outPath = path.join('./', outputFiles);
+            const ffmpegCmd = isAnimated
+                ? `ffmpeg -y -i "${inputPath}" -movflags +faststart -pix_fmt yuv420p "${outPath}"`
+                : `ffmpeg -y -i "${inputPath}" "${outPath}"`;
 
-            fs.writeFileSync(filePath, buffer);
-
-            exec(`ffmpeg -i ${filePath} ${outPath}`, async (err) => {
-                fs.unlinkSync(filePath);
+            exec(ffmpegCmd, async (err) => {
+                if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
                 if (err) {
-                    return m.reply('Failed to convert sticker to image.');
+                    return m.reply('Failed to convert sticker.');
                 }
 
-                const imageBuffer = fs.readFileSync(outPath);
-                await sock.sendMessage(m.chat, { image: imageBuffer, caption: 'Converted successfully' }, { quoted: m });
-                fs.unlinkSync(outPath);
+                const mediaBuffer = fs.readFileSync(outPath);
+                if (isAnimated) {
+                    await sock.sendMessage(
+                        m.chat,
+                        { video: mediaBuffer, mimetype: 'video/mp4', caption: 'Converted animated sticker to video' },
+                        { quoted: m }
+                    );
+                } else {
+                    await sock.sendMessage(
+                        m.chat,
+                        { image: mediaBuffer, caption: 'Converted sticker to image' },
+                        { quoted: m }
+                    );
+                }
+                if (fs.existsSync(outPath)) fs.unlinkSync(outPath);
             });
 
         } catch (error) {
             console.error(error);
-            m.reply(' An error occurred.');
+            if (inputPath && fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
+            if (outPath && fs.existsSync(outPath)) fs.unlinkSync(outPath);
+            m.reply('An error occurred.');
         }
     }
 };

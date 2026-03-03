@@ -5,7 +5,7 @@ export default {
     name: 'adddns',
     aliases: ['subdomain', 'dns'],
     description: 'Add DNS Record to Cloudflare',
-    category: 'Panel',
+    category: 'Cloudflare',
     execute: async (sock, m, args) => {
         const sender = m.sender;
         const isOwner = sender === settings.ownerNumber || sender === settings.ownerLid || sender.split(':')[0] === settings.ownerNumber.split('@')[0];

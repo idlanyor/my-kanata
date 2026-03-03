@@ -5,7 +5,7 @@ import { settings } from '../../config/settings.js';
 export default {
     name: 'tourl',
     aliases: ['upload', 'toimageurl'],
-    description: 'Upload media (image, video, audio, sticker) to get a public URL',
+    description: 'Upload media (image, video, audio, sticker, document) to get a public URL',
     category: 'Tools',
     execute: async (sock, m, args) => {
         try {
@@ -14,17 +14,17 @@ export default {
             const mime = msg.mimetype || '';
             
             if (!mime) {
-                return m.reply(`Reply to an image, video, audio, or sticker with *${settings.prefix}tourl*`);
+                return m.reply(`Reply to an image, video, audio, sticker, or document with *${settings.prefix}tourl*`);
             }
 
             await m.reply('Uploading media, please wait...');
 
-            const buffer = await quoted.downloadMediaMessage();
+            const buffer = await m.downloadMediaMessage(quoted);
             
             const formData = new FormData();
             // Extension mapping
             const ext = mime.split('/')[1]?.split(';')[0] || 'bin';
-            const filename = `file_${Date.now()}.${ext}`;
+            const filename = msg.fileName || msg.filename || `file_${Date.now()}.${ext}`;
             
             formData.append('file', buffer, { 
                 filename, 

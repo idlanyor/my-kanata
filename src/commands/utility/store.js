@@ -1,5 +1,6 @@
 import User from '../../database/models/User.js';
 import Transaction from '../../database/models/Transaction.js';
+import Server from '../../database/models/Server.js';
 import { createPteroServer } from '../../lib/pterodactyl.js';
 import { settings } from '../../config/settings.js';
 
@@ -19,12 +20,20 @@ export default {
     description: 'Pterodactyl VPS Store',
     category: 'Utility',
     execute: async (sock, m, args, text) => {
-        const subCommand = args[0]?.toLowerCase();
+        const cmdUsed = m.body.slice(settings.prefix.length).trim().split(' ')[0].toLowerCase();
+        let planId = null;
 
-        if (subCommand === 'buy') {
-            const planId = parseInt(args[1]);
+        // Logic: .buy 1 OR .store buy 1 OR .store 1
+        if (cmdUsed === 'buy') {
+            planId = parseInt(args[0]);
+        } else if (args[0]?.toLowerCase() === 'buy') {
+            planId = parseInt(args[1]);
+        } else if (!isNaN(parseInt(args[0]))) {
+            planId = parseInt(args[0]);
+        }
+
+        if (planId) {
             const plan = plans.find(p => p.id === planId);
-
             if (!plan) {
                 return m.reply(`Invalid Plan ID. Use ${settings.prefix}store to see available plans.`);
             }
@@ -45,7 +54,20 @@ export default {
                 // 1. Create Server on Pterodactyl
                 const server = await createPteroServer(m.sender, plan);
 
-                // 2. Deduct Balance
+                // 2. Simpan ke database Server bot (Masa Aktif 30 Hari)
+                const expiredDate = new Date();
+                expiredDate.setDate(expiredDate.getDate() + 30);
+
+                await Server.create({
+                    userId: m.sender,
+                    pteroId: server.id,
+                    identifier: server.identifier,
+                    planName: plan.name,
+                    price: plan.price,
+                    expiredAt: expiredDate
+                });
+
+                // 3. Deduct Balance
                 user.balance -= plan.price;
                 await user.save();
 
@@ -55,7 +77,8 @@ export default {
                     userName: m.pushName || 'User',
                     type: 'expense',
                     amount: plan.price,
-                    category: 'Utility',
+                    category: 'Store',
+                    source: 'store',
                     description: `Purchased Ptero VPS Plan ${plan.name} (ID: ${server.id})`
                 });
 

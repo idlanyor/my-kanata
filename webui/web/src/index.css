@@ -1,0 +1,164 @@
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-sidebar: #1e293b;
+  --color-accent: #0ea5e9;
+  
+  --font-sans: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+}
+
+:root {
+  --bg-main: #f8fafc;
+  --bg-card: #ffffff;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --border-color: #e2e8f0;
+  --sidebar-bg: #ffffff;
+  --sidebar-text: #475569;
+  --sidebar-border: #e2e8f0;
+  --scrollbar-track: #e2e8f0;
+  --scrollbar-thumb: #94a3b8;
+  --scrollbar-thumb-hover: #64748b;
+}
+
+.dark {
+  --bg-main: #020617;
+  --bg-card: #0f172a;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --border-color: #1e293b;
+  --sidebar-bg: #0f172a;
+  --sidebar-text: #94a3b8;
+  --sidebar-border: #1e293b;
+  --scrollbar-track: #0f172a;
+  --scrollbar-thumb: #334155;
+  --scrollbar-thumb-hover: #475569;
+}
+
+:root {
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+/* Custom utility-like classes if needed, or just use tailwind classes in components */
+@layer utilities {
+  .scrollbar-hide {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollbar-pretty {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
+  .scrollbar-pretty::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  .scrollbar-pretty::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+    border-radius: 9999px;
+  }
+  .scrollbar-pretty::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 9999px;
+    border: 2px solid var(--scrollbar-track);
+  }
+  .scrollbar-pretty::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+  }
+
+  .scrollbar-terminal {
+    scrollbar-width: thin;
+    scrollbar-color: #334155 #0b0f19;
+  }
+  .scrollbar-terminal::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  .scrollbar-terminal::-webkit-scrollbar-track {
+    background: #0b0f19;
+  }
+  .scrollbar-terminal::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 9999px;
+    border: 2px solid #0b0f19;
+  }
+  .scrollbar-terminal::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+  }
+}
+
+@layer components {
+  /* Global Card Standard */
+  .card-base {
+    @apply bg-[var(--bg-card)] rounded-lg border border-[var(--border-color)] shadow-sm transition-all duration-300;
+  }
+  
+  /* Global Heading Standard */
+  .heading-primary {
+    @apply text-lg font-bold tracking-tight text-[var(--text-primary)];
+  }
+  
+  .heading-secondary {
+    @apply text-[10px] font-black uppercase tracking-widest text-[var(--text-secondary)] opacity-60;
+  }
+
+  /* Global Button Standard */
+  .btn {
+    @apply inline-flex items-center gap-2 px-3 py-2 rounded-lg font-bold text-[11px] uppercase tracking-wider transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
+  }
+  
+  .btn-primary {
+    @apply bg-sky-500/10 text-sky-500 hover:bg-sky-500 hover:text-white border border-sky-500/20 shadow-none;
+  }
+  .btn-success {
+    @apply bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white border border-emerald-500/20 shadow-none;
+  }
+  .btn-danger {
+    @apply bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/20 shadow-none;
+  }
+  .btn-ghost {
+    @apply bg-[var(--bg-main)] text-[var(--text-secondary)] border border-[var(--border-color)] hover:bg-[var(--border-color)] hover:text-[var(--text-primary)];
+  }
+  
+  .badge {
+    @apply px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tight;
+  }
+  .badge-success {
+    @apply bg-emerald-500/10 text-emerald-500 border border-emerald-500/20;
+  }
+  .badge-danger {
+    @apply bg-red-500/10 text-red-700 dark:text-red-400 border border-red-500/20;
+  }
+  .badge-warning {
+    @apply bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20;
+  }
+
+  /* Shake animation for error states */
+  .animate-shake {
+    animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+  }
+}
+
+@keyframes shake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
+}

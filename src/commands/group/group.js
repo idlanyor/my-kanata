@@ -1,3 +1,5 @@
+import { jidNormalizedUser } from '@whiskeysockets/baileys';
+
 export default {
     name: 'group',
     description: 'Manage group settings (open/close)',
@@ -8,13 +10,14 @@ export default {
 
         const groupMetadata = await sock.groupMetadata(m.chat);
         const participants = groupMetadata.participants;
-        const botJid = sock.user.id.split(':')[0].split('@')[0];
-        const botLid = sock.user.lid ? sock.user.lid.split(':')[0].split('@')[0] : null;
         
-        const userAdmin = participants.find(p => p.id === m.sender);
+        const botJid = jidNormalizedUser(sock.user.id);
+        const botLid = sock.user.lid ? jidNormalizedUser(sock.user.lid) : null;
+        
+        const userAdmin = participants.find(p => jidNormalizedUser(p.id) === jidNormalizedUser(m.sender));
         const botAdmin = participants.find(p => {
-            const pid = p.id.split(':')[0].split('@')[0];
-            return pid === botJid || (botLid && pid === botLid);
+            const pid = jidNormalizedUser(p.id);
+            return pid === botJid || pid === botLid;
         });
 
         // console.log(`[DEBUG] Group Management - Chat: ${m.chat}`);

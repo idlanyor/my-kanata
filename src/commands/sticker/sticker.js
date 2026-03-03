@@ -1,5 +1,6 @@
-import { downloadContentFromMessage } from '@whiskeysockets/baileys';
 import { Sticker, StickerTypes } from 'wa-sticker-formatter';
+import axios from 'axios';
+import { scrapeTwitter } from '../../lib/twitterScraper.js';
 
 export default {
     name: 'sticker',
@@ -8,37 +9,65 @@ export default {
     category: 'Sticker',
     execute: async (sock, m, args, text) => {
         try {
-            const quoted = m.msg.contextInfo ? m.msg.contextInfo.quotedMessage : null;
-            const type = m.mtype;
-            
-            let messageToDownload = null;
-            let mediaType = '';
-
-            if (type === 'imageMessage' || type === 'videoMessage') {
-                messageToDownload = m.msg;
-                mediaType = type.replace('Message', '');
-            } else if (quoted) {
-                const quotedType = Object.keys(quoted)[0];
-                if (quotedType === 'imageMessage' || quotedType === 'videoMessage') {
-                    messageToDownload = quoted[quotedType];
-                    mediaType = quotedType.replace('Message', '');
-                }
-            }
-
-            if (!messageToDownload) {
-                return m.reply('Please reply to an image or video/gif with !sticker');
-            }
-
-            // console.log(`[DEBUG] Downloading ${mediaType} for sticker...`);
             await m.reply('Processing sticker...');
+            let buffer;
+            let isAnimatedSource = false;
 
-            const stream = await downloadContentFromMessage(messageToDownload, mediaType);
-            let buffer = Buffer.from([]);
-            for await (const chunk of stream) {
-                buffer = Buffer.concat([buffer, chunk]);
+            if (text && /^https?:\/\//i.test(text.trim())) {
+                const originalUrl = text.trim();
+                const isTwitterUrl = /https?:\/\/(?:www\.)?(?:twitter\.com|x\.com)\//i.test(originalUrl);
+                let mediaUrl = originalUrl;
+                let forceAnimatedFromSource = false;
+
+                if (isTwitterUrl) {
+                    const data = await scrapeTwitter(originalUrl);
+                    if (!data || !Array.isArray(data.medias) || data.medias.length === 0) {
+                        return m.reply('Gagal mengambil media dari link Twitter/X.');
+                    }
+                    mediaUrl = data.medias[0].url;
+                    forceAnimatedFromSource = true;
+                }
+
+                const response = await axios.get(mediaUrl, {
+                    responseType: 'arraybuffer',
+                    timeout: 30000
+                });
+                const contentType = (response.headers['content-type'] || '').toLowerCase();
+                const urlLower = mediaUrl.toLowerCase();
+
+                const isImageUrl = contentType.startsWith('image/');
+                const isVideoUrl = contentType.startsWith('video/');
+                const isGifUrl = contentType.includes('image/gif') || /\.gif($|\?)/.test(urlLower);
+                const isAnimatedUrlByExt = /\.(mp4|webm|mkv|mov)($|\?)/.test(urlLower);
+
+                if (!isImageUrl && !isVideoUrl && !isGifUrl && !isAnimatedUrlByExt) {
+                    return m.reply('URL harus mengarah ke media gambar/video/gif yang valid.');
+                }
+
+                isAnimatedSource = forceAnimatedFromSource || isVideoUrl || isGifUrl || isAnimatedUrlByExt;
+                buffer = Buffer.from(response.data);
+            } else {
+                const target = m.quoted || m;
+                const mime = target?.msg?.mimetype || '';
+                const fileName = (target?.msg?.fileName || '').toLowerCase();
+                const isGifDocument = target.isDocument && /image\/gif/i.test(mime);
+                const isVideoDocument = target.isDocument && /video\//i.test(mime);
+                const isAnimatedDocumentByExt = target.isDocument && /\.(gif|mp4|webm|mkv|mov)$/.test(fileName);
+                isAnimatedSource = target.isVideo || isGifDocument || isVideoDocument || isAnimatedDocumentByExt;
+
+                if (!target.isImage && !isAnimatedSource) {
+                    return m.reply('Kirim/balas gambar-video-gif, atau pakai `.s <url>`');
+                }
+
+                if (isAnimatedSource) {
+                    const duration = Number(target.seconds || target?.msg?.seconds || 0);
+                    if (duration > 10) {
+                        return m.reply(`Durasi video terlalu panjang (${duration}s). Maksimal 10 detik.`);
+                    }
+                }
+
+                buffer = await target.download();
             }
-
-            // console.log(`[DEBUG] ${mediaType} downloaded, creating sticker...`);
 
             const sticker = new Sticker(buffer, {
                 pack: 'MyBot Pack',
@@ -46,18 +75,15 @@ export default {
                 type: StickerTypes.FULL,
                 categories: ['', ''],
                 id: m.id,
-                quality: 50
+                quality: 50,
+                animated: isAnimatedSource
             });
 
             const stickerBuffer = await sticker.toBuffer();
-            // console.log(`[DEBUG] Sticker created, sending...`);
-
             await sock.sendMessage(m.chat, { sticker: stickerBuffer }, { quoted: m });
-            // console.log(`[DEBUG] Sticker sent successfully`);
-
         } catch (err) {
             console.error(`[DEBUG] Sticker command failed:`, err);
-            await m.reply(' Failed to create sticker.');
+            await m.reply('Gagal membuat sticker dari media tersebut.');
         }
     }
 };

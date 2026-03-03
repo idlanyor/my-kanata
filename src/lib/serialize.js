@@ -40,7 +40,7 @@ export const serialize = (m, sock) => {
         m.chat = decodeJid(m.key.remoteJid);
         m.fromMe = m.key.fromMe;
         m.isGroup = m.chat.endsWith('@g.us');
-        m.sender = decodeJid(m.fromMe ? (sock.user.id.split(':')[0] + '@s.whatsapp.net') : (m.isGroup ? m.key.participant : m.chat));
+        m.sender = decodeJid(m.fromMe ? jidNormalizedUser(sock.user.id) : (m.isGroup ? m.key.participant : m.chat));
     }
 
     if (m.message) {

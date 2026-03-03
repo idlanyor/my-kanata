@@ -111,6 +111,7 @@ Jika tidak jelas, balas: {"error": "data tidak jelas"}`;
                     type: txData.type,
                     amount: txData.amount,
                     category: txData.category,
+                    source: 'finance',
                     description: txData.description,
                     date: txData.date ? new Date(txData.date) : new Date()
                 });

@@ -1,0 +1,779 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MyBot Manager</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+      :root {
+        --bg: #f8fafc;
+        --sidebar: #1e293b;
+        --sidebar-hover: #334155;
+        --card: #ffffff;
+        --line: #e2e8f0;
+        --text: #0f172a;
+        --muted: #64748b;
+        --accent: #0ea5e9;
+        --accent-hover: #0284c7;
+        --danger: #ef4444;
+        --success: #10b981;
+        --warning: #f59e0b;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: var(--text);
+        background-color: var(--bg);
+        display: flex;
+        min-height: 100vh;
+      }
+      
+      /* Sidebar */
+      aside {
+        width: 260px;
+        background-color: var(--sidebar);
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        height: 100vh;
+        z-index: 100;
+      }
+      .brand {
+        padding: 24px;
+        font-size: 20px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border-bottom: 1px solid var(--sidebar-hover);
+      }
+      nav { padding: 16px 0; flex: 1; }
+      nav a {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 24px;
+        color: #94a3b8;
+        text-decoration: none;
+        transition: all 0.2s;
+      }
+      nav a:hover, nav a.active {
+        background-color: var(--sidebar-hover);
+        color: #fff;
+      }
+      nav a.active { border-left: 4px solid var(--accent); }
+      
+      /* Main Content */
+      main {
+        margin-left: 260px;
+        flex: 1;
+        padding: 32px;
+        width: calc(100% - 260px);
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+      }
+      
+      .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+      h1, h2, h3 { margin: 0 0 16px; }
+      
+      /* Dashboard Stats */
+      .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; margin-bottom: 32px; }
+      .stat-card { background: var(--card); padding: 24px; border-radius: 12px; border: 1px solid var(--line); display: flex; align-items: center; gap: 16px; }
+      .stat-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+      .stat-data h3 { font-size: 14px; color: var(--muted); margin: 0; }
+      .stat-data p { font-size: 24px; font-weight: 700; margin: 0; }
+      
+      /* Buttons & UI Components */
+      .btn { padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; }
+      .btn-primary { background: var(--accent); color: #fff; }
+      .btn-primary:hover { background: var(--accent-hover); }
+      .btn-danger { background: var(--danger); color: #fff; }
+      .btn-success { background: var(--success); color: #fff; }
+      .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+      .btn-ghost:hover { background: var(--bg); }
+      
+      .badge { padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; }
+      .badge-success { background: #dcfce7; color: #166534; }
+      .badge-danger { background: #fee2e2; color: #991b1b; }
+      .badge-warning { background: #fef3c7; color: #92400e; }
+      
+      /* Forms */
+      .form-group { margin-bottom: 16px; }
+      .form-group label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; }
+      input, select, textarea { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 14px; }
+      input:focus, select:focus { outline: none; border-color: var(--accent); }
+      
+      /* Tables */
+      table { width: 100%; border-collapse: collapse; }
+      th { text-align: left; padding: 12px; border-bottom: 2px solid var(--line); color: var(--muted); font-size: 13px; text-transform: uppercase; }
+      td { padding: 16px 12px; border-bottom: 1px solid var(--line); font-size: 14px; }
+      
+      /* Utilities */
+      .hidden { display: none !important; }
+      .flex { display: flex; }
+      .gap-2 { gap: 8px; }
+      .items-center { align-items: center; }
+      .justify-between { justify-content: space-between; }
+      
+      /* Bot Log Viewer */
+      .log-viewer { background: #0f172a; color: #e2e8f0; border-radius: 12px; padding: 16px; font-family: 'Fira Code', monospace; font-size: 13px; height: 400px; overflow-y: auto; line-height: 1.5; }
+      .log-entry { margin-bottom: 4px; }
+      .log-time { color: #64748b; margin-right: 8px; }
+      .log-type-error { color: #ef4444; }
+      .text-danger { color: var(--danger); font-weight: 600; }
+      .text-warning { color: var(--warning); font-weight: 600; }
+      
+      /* Login Overlay */
+      #authOverlay {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg);
+        display: flex; align-items: center; justify-content: center; z-index: 1000;
+      }
+      .login-box { width: 100%; max-width: 400px; background: #fff; padding: 32px; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); }
+    </style>
+  </head>
+  <body>
+    <div id="authOverlay" class="hidden">
+      <div class="login-box">
+        <h2 style="text-align:center;">MyBot Login</h2>
+        <div class="form-group">
+          <label>Access Key</label>
+          <input type="password" id="loginAccessKey" placeholder="Enter your access key..." />
+        </div>
+        <button id="loginBtn" class="btn btn-primary" style="width:100%;">Login</button>
+        <p id="loginError" class="badge badge-danger hidden" style="margin-top:16px; width:100%; text-align:center;"></p>
+      </div>
+    </div>
+
+    <aside id="sidebar" class="hidden">
+      <div class="brand">
+        <i class="fa-solid fa-robot" style="color:var(--accent);"></i>
+        MyBot Admin
+      </div>
+      <nav>
+        <a href="#" data-tab="dashboard" class="active"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
+        <a href="#" data-tab="bot-runtime"><i class="fa-solid fa-play"></i> Bot Runtime</a>
+        <a href="#" data-tab="commands"><i class="fa-solid fa-terminal"></i> Commands</a>
+        <a href="#" data-tab="servers"><i class="fa-solid fa-server"></i> Servers</a>
+        <a href="#" data-tab="users"><i class="fa-solid fa-users"></i> Users</a>
+        <a href="#" data-tab="groups"><i class="fa-solid fa-people-group"></i> Groups</a>
+        <a href="#" data-tab="transactions"><i class="fa-solid fa-money-bill-transfer"></i> Transactions</a>
+        <a href="#" data-tab="settings"><i class="fa-solid fa-gear"></i> Settings</a>
+      </nav>
+      <div style="padding: 16px; border-top: 1px solid var(--sidebar-hover);">
+        <button id="logoutBtn" class="btn btn-ghost" style="width:100%; color:#fff; border-color:var(--sidebar-hover);">
+          <i class="fa-solid fa-right-from-bracket"></i> Logout
+        </button>
+      </div>
+    </aside>
+
+    <main id="mainContent" class="hidden">
+      <header>
+        <h1 id="tabTitle">Dashboard</h1>
+        <div class="flex items-center gap-2">
+          <span id="botStatusBadge" class="badge">Checking...</span>
+          <div id="userProfile" class="muted"></div>
+        </div>
+      </header>
+
+      <!-- Dashboard Tab -->
+      <section id="tab-dashboard" class="tab-content">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon" style="background:#e0f2fe; color:#0ea5e9;"><i class="fa-solid fa-users"></i></div>
+            <div class="stat-data"><h3>Total Users</h3><p id="stat-users">-</p></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:#fef3c7; color:#f59e0b;"><i class="fa-solid fa-server"></i></div>
+            <div class="stat-data"><h3>Active Servers</h3><p id="stat-servers">-</p></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:#dcfce7; color:#10b981;"><i class="fa-solid fa-people-group"></i></div>
+            <div class="stat-data"><h3>Total Groups</h3><p id="stat-groups">-</p></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background:#ede9fe; color:#8b5cf6;"><i class="fa-solid fa-coins"></i></div>
+            <div class="stat-data"><h3>Revenue</h3><p id="stat-revenue">-</p></div>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Quick Actions</h2>
+          <div class="flex gap-2">
+            <button class="btn btn-primary" onclick="switchTab('bot-runtime')">Control Bot</button>
+            <button class="btn btn-ghost" onclick="switchTab('settings')">Bot Settings</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Bot Runtime Tab -->
+      <section id="tab-bot-runtime" class="tab-content hidden">
+        <div class="grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+          <div class="card">
+            <h2>Process Control</h2>
+            <div id="pairingCodeBox" class="card hidden" style="background:#f0f9ff; border-color:#bae6fd; text-align:center;">
+              <p class="muted">WhatsApp Pairing Code:</p>
+              <h1 style="font-family:monospace; color:var(--accent); font-size:48px; margin:10px 0;" id="pairingCodeDisplay">----</h1>
+              <p class="small muted">Enter this code on your phone</p>
+            </div>
+            <div class="flex gap-2" style="margin-top:16px;">
+              <button class="btn btn-success" id="startBotBtn"><i class="fa-solid fa-play"></i> Start Bot</button>
+              <button class="btn btn-danger" id="stopBotBtn"><i class="fa-solid fa-stop"></i> Stop Bot</button>
+              <button class="btn btn-primary" id="restartBotBtn"><i class="fa-solid fa-rotate-right"></i> Restart</button>
+            </div>
+            <div style="margin-top:24px;">
+              <button class="btn btn-ghost" id="reloginBotBtn"><i class="fa-solid fa-user-plus"></i> Relogin (Clear Session)</button>
+            </div>
+          </div>
+          <div class="card">
+            <h2>Live Console</h2>
+            <div class="log-viewer" id="logViewer">
+              <div class="log-entry">Waiting for logs...</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Commands Tab -->
+      <section id="tab-commands" class="tab-content hidden">
+        <div class="card">
+          <div class="flex justify-between items-center">
+            <h2>Bot Commands</h2>
+            <input type="text" placeholder="Search commands..." style="width:200px;" id="commandSearch" />
+          </div>
+          <table>
+            <thead><tr><th>Name</th><th>Category</th><th>Permissions</th><th>Cooldown</th></tr></thead>
+            <tbody id="commandTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Shared Data Tab Template (Servers, Users, Groups, Transactions) -->
+      <section id="tab-data" class="tab-content hidden">
+        <div class="card">
+          <div class="flex justify-between items-center">
+            <h2 id="dataTitle">Data Management</h2>
+            <div class="flex gap-2">
+                <button class="btn btn-success hidden" id="syncServersBtn"><i class="fa-solid fa-sync"></i> Sync from Panel</button>
+                <input type="text" placeholder="Search..." style="width:200px;" id="dataSearch" />
+                <button class="btn btn-primary" id="addDataBtn">Add New</button>
+            </div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table id="dataTable">
+                <thead><tr id="dataTableHeader"></tr></thead>
+                <tbody id="dataTableBody"></tbody>
+            </table>
+          </div>
+          <div class="flex justify-between items-center" style="margin-top:16px;">
+            <p class="muted" id="dataPaginationInfo"></p>
+            <div class="flex gap-2">
+                <button class="btn btn-ghost small" id="prevPageBtn">Prev</button>
+                <button class="btn btn-ghost small" id="nextPageBtn">Next</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Settings Tab -->
+      <section id="tab-settings" class="tab-content hidden">
+        <div class="card">
+          <h2>Bot Global Settings</h2>
+          <form id="settingsForm">
+            <div class="grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                <div>
+                    <div class="form-group">
+                        <label>Bot Mode</label>
+                        <select name="mode">
+                            <option value="public">Public (Everyone can use)</option>
+                            <option value="self">Self (Only Bot Owner)</option>
+                            <option value="group">Group Only</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Auto Status Read</label>
+                        <select name="autoStatusRead">
+                            <option value="true">Enabled</option>
+                            <option value="false">Disabled</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Auto AI Private Chat</label>
+                        <select name="autoAiPrivate">
+                            <option value="true">Enabled</option>
+                            <option value="false">Disabled</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <div class="form-group">
+                        <label>AI Persona</label>
+                        <textarea name="privateAiPersona" rows="4"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Group Invite Link</label>
+                        <input name="groupInviteLink" type="text" />
+                    </div>
+                </div>
+            </div>
+            <div class="flex gap-2" style="margin-top:16px;">
+                <button type="submit" class="btn btn-primary">Save Settings</button>
+                <button type="reset" class="btn btn-ghost">Reset</button>
+            </div>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      let currentUser = null;
+      let currentTab = 'dashboard';
+      let dataPage = 1;
+      let dataCollection = 'servers';
+      let socket = null;
+
+      // API Helper
+      async function api(path, options = {}) {
+        const res = await fetch(path, { ...options, credentials: 'include' });
+        if (res.status === 401) {
+            showLoggedOut();
+            throw new Error('Unauthorized');
+        }
+        if (!res.ok) {
+          const body = await res.text();
+          throw new Error(body || 'Request failed');
+        }
+        if (res.status === 204) return null;
+        return res.json();
+      }
+
+      // Socket.IO Setup
+      function initSocket() {
+        if (socket) return;
+        
+        socket = io();
+
+        socket.on('connect', () => {
+            console.log('[UI] Connected to WebApp WS');
+        });
+
+        socket.on('ui:bot-status', (data) => {
+            updateStatusUI(data);
+        });
+
+        socket.on('ui:bot-log', (data) => {
+            if (currentTab === 'bot-runtime') {
+                appendLog(data);
+            }
+        });
+      }
+
+      // UI Updaters
+      function updateStatusUI(statusData) {
+        const badge = document.getElementById('botStatusBadge');
+        const status = statusData.status || 'offline';
+        
+        badge.textContent = status.toUpperCase();
+        badge.className = 'badge ' + (status === 'online' ? 'badge-success' : status === 'starting' ? 'badge-warning' : 'badge-danger');
+        
+        const pairingBox = document.getElementById('pairingCodeBox');
+        if (statusData.pairingCode) {
+            pairingBox.classList.remove('hidden');
+            document.getElementById('pairingCodeDisplay').textContent = statusData.pairingCode;
+        } else if (status === 'online') {
+            pairingBox.classList.add('hidden');
+        }
+
+        // Button states
+        document.getElementById('startBotBtn').disabled = (status === 'online' || status === 'starting');
+        document.getElementById('stopBotBtn').disabled = (status === 'offline');
+      }
+
+      function appendLog(log) {
+        const logViewer = document.getElementById('logViewer');
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        
+        const time = new Date(log.timestamp).toLocaleTimeString();
+        const colorClass = log.type === 'error' ? 'log-type-error' : log.type === 'warn' ? 'badge-warning' : '';
+        const prefix = log.type === 'error' ? '[ERROR]' : log.type === 'warn' ? '[WARN]' : '[INFO]';
+        
+        entry.innerHTML = `
+            <span class="log-time">${time}</span>
+            <span class="${colorClass}">${prefix} ${log.message}</span>
+        `;
+        
+        logViewer.appendChild(entry);
+        
+        // Auto-scroll if near bottom
+        if (logViewer.scrollTop + logViewer.clientHeight >= logViewer.scrollHeight - 50) {
+            logViewer.scrollTop = logViewer.scrollHeight;
+        }
+      }
+
+      // Tab Management
+      function switchTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll('nav a').forEach(a => {
+            a.classList.toggle('active', a.dataset.tab === tab);
+        });
+        document.querySelectorAll('.tab-content').forEach(c => {
+            c.classList.add('hidden');
+        });
+        
+        const tabEl = document.getElementById(`tab-${tab}`) || document.getElementById('tab-data');
+        tabEl.classList.remove('hidden');
+        
+        document.getElementById('tabTitle').textContent = tab.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
+
+        // Show/Hide Sync button
+        const syncBtn = document.getElementById('syncServersBtn');
+        if (tab === 'servers') {
+            syncBtn.classList.remove('hidden');
+        } else {
+            syncBtn.classList.add('hidden');
+        }
+
+        // Tab-specific loads
+        if (tab === 'dashboard') refreshDashboard();
+        if (tab === 'commands') loadCommands();
+        if (tab === 'settings') loadSettings();
+        if (['servers', 'users', 'groups', 'transactions'].includes(tab)) {
+            dataCollection = tab;
+            dataPage = 1;
+            loadData();
+        }
+      }
+
+      document.querySelectorAll('nav a').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            switchTab(a.dataset.tab);
+        });
+      });
+
+      // Dashboard
+      async function refreshDashboard() {
+        try {
+            const stats = await api('/api/stats/dashboard');
+            document.getElementById('stat-users').textContent = stats.summary.users;
+            document.getElementById('stat-servers').textContent = stats.summary.servers;
+            document.getElementById('stat-groups').textContent = stats.summary.groups;
+            document.getElementById('stat-revenue').textContent = `Rp ${new Intl.NumberFormat('id-ID').format(stats.summary.revenue)}`;
+        } catch (err) {
+            console.error('Failed to refresh dashboard:', err);
+        }
+      }
+
+      // Bot Runtime
+      async function loadInitialRuntimeData() {
+        try {
+            const status = await api('/api/bot/status');
+            updateStatusUI(status);
+            
+            const logs = await api('/api/bot/logs');
+            const logViewer = document.getElementById('logViewer');
+            logViewer.innerHTML = '';
+            logs.forEach(appendLog);
+        } catch (err) {
+            console.error('Failed to load initial runtime data', err);
+        }
+      }
+
+      document.getElementById('startBotBtn').onclick = () => api('/api/bot/start', { method: 'POST' });
+      document.getElementById('stopBotBtn').onclick = () => api('/api/bot/stop', { method: 'POST' });
+      document.getElementById('restartBotBtn').onclick = () => api('/api/bot/restart', { method: 'POST' });
+      document.getElementById('reloginBotBtn').onclick = () => {
+          if (confirm('Are you sure you want to clear the session and relogin?')) {
+              api('/api/bot/relogin', { method: 'POST' });
+          }
+      };
+
+      // Commands
+      async function loadCommands() {
+        try {
+            const commands = await api('/api/commands');
+            const tbody = document.getElementById('commandTableBody');
+            tbody.innerHTML = commands.map(c => `
+                <tr>
+                    <td><b>!${c.name}</b><br><span class="muted">${c.description}</span></td>
+                    <td>${c.category}</td>
+                    <td>
+                        ${c.adminOnly ? '<span class="badge badge-warning">Admin</span>' : ''}
+                        ${c.ownerOnly ? '<span class="badge badge-danger">Owner</span>' : ''}
+                        ${!c.adminOnly && !c.ownerOnly ? '<span class="badge">User</span>' : ''}
+                    </td>
+                    <td>${c.cooldown}s</td>
+                </tr>
+            `).join('');
+        } catch (err) {
+            console.error('Failed to load commands:', err);
+        }
+      }
+
+      // Settings
+      async function loadSettings() {
+        try {
+            const settings = await api('/api/settings');
+            const form = document.getElementById('settingsForm');
+            for (const key in settings) {
+                if (form[key]) {
+                    if (form[key].type === 'checkbox') {
+                        form[key].checked = settings[key];
+                    } else {
+                        form[key].value = settings[key].toString();
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('Failed to load settings:', err);
+        }
+      }
+
+      document.getElementById('settingsForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const data = Object.fromEntries(fd.entries());
+        ['autoStatusRead', 'autoAiPrivate'].forEach(k => data[k] = data[k] === 'true');
+        
+        await api('/api/settings', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        alert('Settings saved!');
+      };
+
+      // Generic Data Table
+      async function loadData() {
+        try {
+            const search = document.getElementById('dataSearch').value;
+            const res = await api(`/api/data/${dataCollection}?page=${dataPage}&search=${search}`);
+            
+            document.getElementById('dataTitle').textContent = dataCollection.charAt(0).toUpperCase() + dataCollection.slice(1);
+            
+            const header = document.getElementById('dataTableHeader');
+            const body = document.getElementById('dataTableBody');
+            
+            if (res.data.length === 0) {
+                body.innerHTML = `<tr><td colspan="10" style="text-align:center; padding: 40px;">No ${dataCollection} found.</td></tr>`;
+                return;
+            }
+
+            // Specialized Human Readable View for SERVERS
+            if (dataCollection === 'servers') {
+                header.innerHTML = `
+                    <th>Customer</th>
+                    <th>Server Plan</th>
+                    <th>Technical Details</th>
+                    <th>Price</th>
+                    <th>Status</th>
+                    <th>Expiration</th>
+                    <th>Actions</th>
+                `;
+                
+                body.innerHTML = res.data.map(row => {
+                    const expiryDate = new Date(row.expiredAt);
+                    const now = new Date();
+                    const diffDays = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
+                    const isExpired = diffDays < 0;
+                    
+                    let expiryClass = diffDays <= 3 ? 'text-danger' : (diffDays <= 7 ? 'text-warning' : '');
+                    if (isExpired) expiryClass = 'badge badge-danger';
+
+                    return `
+                        <tr>
+                            <td>
+                                <b>${row.userId.split('@')[0]}</b><br>
+                                <span class="muted" style="font-size:11px;">${row.userId}</span>
+                            </td>
+                            <td>
+                                <span style="font-weight:600; color:var(--accent);">${row.planName}</span>
+                            </td>
+                            <td>
+                                <code style="background:#f1f5f9; padding:2px 4px; border-radius:4px;">ID: ${row.identifier}</code><br>
+                                <span class="muted" style="font-size:11px;">Ptero ID: ${row.pteroId}</span>
+                            </td>
+                            <td>
+                                <b>Rp ${new Intl.NumberFormat('id-ID').format(row.price)}</b>
+                            </td>
+                            <td>
+                                <span class="badge ${row.status === 'active' ? 'badge-success' : (row.status === 'suspended' ? 'badge-danger' : 'badge-warning')}">
+                                    ${row.status}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="${expiryClass}">
+                                    ${expiryDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                </span><br>
+                                <span class="muted" style="font-size:11px;">
+                                    ${isExpired ? 'Expired' : (diffDays === 0 ? 'Expires today' : `${diffDays} days left`)}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="flex gap-2">
+                                                                <button class="btn btn-ghost small" onclick="controlServer('${row.identifier}', 'start')" title="Start"><i class="fa-solid fa-play"></i></button>
+                                                                <button class="btn btn-ghost small" onclick="controlServer('${row.identifier}', 'restart')" title="Restart"><i class="fa-solid fa-rotate-right"></i></button>
+                                                                <button class="btn btn-ghost small" onclick="toggleSuspend('${row._id}')" title="Suspend/Unsuspend"><i class="fa-solid fa-ban"></i></button>
+                                                                <button class="btn btn-ghost small" onclick="setExpiry('${row._id}', '${row.expiredAt}')" title="Set Expiry"><i class="fa-solid fa-calendar-day"></i></button>
+                                                                <button class="btn btn-ghost small danger" onclick="deleteItem('${row._id}')" title="Delete"><i class="fa-solid fa-trash"></i></button>
+                                    
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            } else {
+                // Default Generic View for other collections
+                const keys = Object.keys(res.data[0]).filter(k => !k.startsWith('_') && k !== '__v');
+                header.innerHTML = keys.map(k => `<th>${k}</th>`).join('') + '<th>Actions</th>';
+                
+                body.innerHTML = res.data.map(row => `
+                    <tr>
+                        ${keys.map(k => {
+                            let val = row[k];
+                            if (k.includes('At') || k === 'createdAt') val = new Date(val).toLocaleString();
+                            return `<td>${val}</td>`;
+                        }).join('')}
+                        <td>
+                            <button class="btn btn-ghost small danger" onclick="deleteItem('${row._id}')"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            document.getElementById('dataPaginationInfo').textContent = `Showing ${res.data.length} of ${res.pagination.total} entries`;
+        } catch (err) {
+            console.error('Failed to load data:', err);
+        }
+      }
+
+      window.controlServer = async (identifier, signal) => {
+          try {
+              await api(`/api/servers/${identifier}/power`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ signal })
+              });
+              alert(`Signal ${signal} sent!`);
+          } catch (err) {
+              alert('Error controlling server: ' + err.message);
+          }
+      };
+
+      window.toggleSuspend = async (id) => {
+          try {
+              await api(`/api/servers/${id}/suspend-toggle`, { method: 'POST' });
+              loadData();
+          } catch (err) {
+              alert('Error toggling suspend: ' + err.message);
+          }
+      };
+
+      document.getElementById('syncServersBtn').onclick = async () => {
+          if (!confirm('Sync servers from Pterodactyl panel? This will add missing servers to the database.')) return;
+          try {
+              const res = await api('/api/servers/sync', { method: 'POST' });
+              alert(`Sync complete! Added ${res.addedCount} new servers.`);
+              loadData();
+          } catch (err) {
+              alert('Sync failed: ' + err.message);
+          }
+      };
+
+      window.setExpiry = async (id, currentVal) => {
+          const currentDate = new Date(currentVal).toISOString().split('T')[0];
+          const newDateInput = prompt('Enter new expiration date (YYYY-MM-DD):', currentDate);
+          
+          if (newDateInput && newDateInput !== currentDate) {
+              try {
+                  await api(`/api/servers/${id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ expiredAt: new Date(newDateInput).toISOString(), status: 'active' })
+                  });
+                  alert('Expiration date updated!');
+                  loadData();
+              } catch (err) {
+                  alert('Update failed: ' + err.message);
+              }
+          }
+      };
+
+      window.deleteItem = async (id) => {
+          if (confirm('Delete this item?')) {
+              await api(`/api/data/${dataCollection}/${id}`, { method: 'DELETE' });
+              loadData();
+          }
+      }
+
+      document.getElementById('dataSearch').oninput = () => { dataPage = 1; loadData(); };
+      document.getElementById('prevPageBtn').onclick = () => { if (dataPage > 1) { dataPage--; loadData(); } };
+      document.getElementById('nextPageBtn').onclick = () => { dataPage++; loadData(); };
+
+      // Auth Logic
+      async function checkAuth() {
+        try {
+          currentUser = await api('/auth/me');
+          showAuthed();
+        } catch {
+          showLoggedOut();
+        }
+      }
+
+      function showAuthed() {
+        document.getElementById('authOverlay').classList.add('hidden');
+        document.getElementById('sidebar').classList.remove('hidden');
+        document.getElementById('mainContent').classList.remove('hidden');
+        
+        if (currentUser) {
+            document.getElementById('userProfile').textContent = `${currentUser.jid} (${currentUser.role})`;
+        }
+        
+        initSocket();
+        refreshDashboard();
+        loadInitialRuntimeData();
+      }
+
+      function showLoggedOut() {
+        document.getElementById('authOverlay').classList.remove('hidden');
+        document.getElementById('sidebar').classList.add('hidden');
+        document.getElementById('mainContent').classList.add('hidden');
+        if (socket) {
+            socket.disconnect();
+            socket = null;
+        }
+      }
+
+      document.getElementById('loginBtn').onclick = async () => {
+        const accessKey = document.getElementById('loginAccessKey').value;
+        try {
+            await api('/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ accessKey })
+            });
+            checkAuth();
+        } catch (err) {
+            const errEl = document.getElementById('loginError');
+            errEl.textContent = err.message;
+            errEl.classList.remove('hidden');
+        }
+      };
+
+      document.getElementById('logoutBtn').onclick = async () => {
+          await api('/auth/logout', { method: 'POST' });
+          showLoggedOut();
+      };
+
+      // Bootstrap
+      checkAuth();
+    </script>
+  </body>
+</html>

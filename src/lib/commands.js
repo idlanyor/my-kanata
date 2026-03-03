@@ -12,7 +12,9 @@ const commandsDir = path.resolve('src/commands');
  */
 export const loadCommands = async () => {
     // 1. Initial Load All Files
+    logger.info(`Scanning for commands in: ${commandsDir}`);
     const files = await glob(`${commandsDir}/**/*.js`);
+    logger.info(`Found ${files.length} command files.`);
     for (const file of files) {
         await importCommand(file);
     }
@@ -22,19 +24,22 @@ export const loadCommands = async () => {
     const watcher = chokidar.watch(commandsDir, {
         ignored: /(^|[\/\\])\../,
         persistent: true,
-        ignoreInitial: true
+        ignoreInitial: true,
+        usePolling: true,
+        interval: 100,
+        binaryInterval: 300
     });
 
     watcher
+        .on('ready', () => logger.info('🔥 Hot-Reload Monitor Active and Ready'))
         .on('add', (filePath) => reloadCommand(filePath))
         .on('change', (filePath) => reloadCommand(filePath))
         .on('unlink', (filePath) => {
             const fileName = path.basename(filePath);
             unloadCommand(filePath);
             logger.info(`🗑️ Plugin Deleted: ${fileName}`);
-        });
-    
-    logger.info(`🔥 Hot-Reload Monitor Active`);
+        })
+        .on('error', error => logger.error(`Watcher error: ${error}`));
 };
 
 /**
