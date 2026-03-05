@@ -21,8 +21,7 @@ export default {
         let browser;
         try {
             browser = await puppeteer.launch({
-                executablePath: '/home/roy/.cache/puppeteer/chrome/linux-144.0.7559.96/chrome-linux64/chrome',
-                headless: 'new',
+                headless: true,
                 args: [
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
