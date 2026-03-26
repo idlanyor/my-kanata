@@ -707,9 +707,17 @@
       };
 
       window.deleteItem = async (id) => {
-          if (confirm('Delete this item?')) {
+          const message = dataCollection === 'groups'
+              ? 'Delete this group? The bot will leave the group first, then the DB record will be removed.'
+              : 'Delete this item?';
+
+          if (!confirm(message)) return;
+
+          try {
               await api(`/api/data/${dataCollection}/${id}`, { method: 'DELETE' });
               loadData();
+          } catch (err) {
+              alert('Delete failed: ' + err.message);
           }
       }
 

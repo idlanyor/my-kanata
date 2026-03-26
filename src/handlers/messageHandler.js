@@ -1,71 +1,87 @@
 import { serialize, decodeJid } from '../lib/serialize.js';
 import { commands } from '../lib/commands.js';
-import { generateAIResponse, uploadFileToGemini } from '../lib/ai.js';
 import logger from '../lib/logger.js';
-import fs from 'fs';
 import { settings } from '../config/settings.js';
-import Settings from '../database/models/Settings.js';
-import Group from '../database/models/Group.js';
-import Poll from '../database/models/Poll.js';
-import Event from '../database/models/Event.js';
 import chalk from 'chalk';
-import { decryptPollVote, jidNormalizedUser } from '@whiskeysockets/baileys';
-import { createHash } from 'crypto';
-import { saveMessage, getMessage } from '../lib/msgStore.js';
+import { saveMessage } from '../lib/msgStore.js';
+import {
+    clearSettingsCache,
+    getCachedSettings,
+    getGroupSettings,
+    getRequiredGroupParticipants,
+    handlePreProcessing,
+    handleSpecialMessages,
+    handleAutoAiPrivate
+} from './messageFlow.js';
 
-// --- CACHING SYSTEM ---
-let settingsCache = null;
-let lastCacheTime = 0;
-const groupCache = new Map();
+export { clearSettingsCache } from './messageFlow.js';
 
-const getCachedSettings = async () => {
-    const now = Date.now();
-    if (!settingsCache || now - lastCacheTime > 60000) {
-        settingsCache = await Settings.findOne({ id: 'bot_settings' }) || await Settings.create({ id: 'bot_settings' });
-        lastCacheTime = now;
+const getBotIdentity = (sock) => {
+    const ownerJid = decodeJid(settings.ownerNumber);
+    const ownerLid = settings.ownerLid ? decodeJid(settings.ownerLid) : null;
+    const botJid = decodeJid(sock.user.id);
+    const botLid = sock.user.lid ? decodeJid(sock.user.lid) : null;
+    return { ownerJid, ownerLid, botJid, botLid };
+};
+
+const handleDeleteServerConfirmation = async (m) => {
+    const confirm = global.confirmDelete.get(m.sender);
+    const body = m.body?.toLowerCase();
+
+    if (body === 'y' || body === 'ya') {
+        const { pteroId, force, timeout } = confirm;
+        clearTimeout(timeout);
+        global.confirmDelete.delete(m.sender);
+
+        await m.reply(`⏳ Memproses penghapusan server ${pteroId}...`);
+
+        try {
+            const PTERO_URL = process.env.PTERO_URL;
+            const PTERO_API_KEY = process.env.PTERO_API_KEY;
+            const axios = (await import('axios')).default;
+
+            const ptero = axios.create({
+                baseURL: `${PTERO_URL}/api/application`,
+                headers: {
+                    'Authorization': `Bearer ${PTERO_API_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'Application/vnd.pterodactyl.v1+json',
+                }
+            });
+
+            try {
+                await ptero.delete(force ? `/servers/${pteroId}/force` : `/servers/${pteroId}`);
+            } catch (e) {
+                if (e.response?.status !== 404) throw e;
+            }
+
+            const Server = (await import('../database/models/Server.js')).default;
+            const deletedDb = await Server.deleteOne({ pteroId });
+
+            await m.reply(`✅ *SERVER BERHASIL DIHAPUS*\n\nID: ${pteroId}\nDB: ${deletedDb.deletedCount > 0 ? 'Terhapus' : 'Tidak di DB'}`);
+        } catch (err) {
+            await m.reply(`❌ Gagal menghapus server: ${err.message}`);
+        }
+        return;
     }
-    return settingsCache;
-};
 
-const getGroupSettings = async (jid, subject = '') => {
-    const now = Date.now();
-    const cached = groupCache.get(jid);
-    if (cached && (now - cached.timestamp < 60000)) return cached.data;
-
-    let data = await Group.findOne({ jid });
-    if (!data) {
-        data = await Group.create({ jid, name: subject || '' });
-    } else if (subject && !data.name) {
-        data = await Group.findOneAndUpdate(
-            { jid },
-            { name: subject },
-            { new: true }
-        );
+    if (body) {
+        const { timeout } = confirm;
+        clearTimeout(timeout);
+        global.confirmDelete.delete(m.sender);
+        await m.reply('❌ Penghapusan dibatalkan.');
     }
-
-    groupCache.set(jid, { data, timestamp: now });
-    return data;
 };
 
-export const clearSettingsCache = () => {
-    settingsCache = null;
-    groupCache.clear();
-};
-
-/**
- * MAIN MESSAGE HANDLER
- */
 export const messageHandler = async (sock, m) => {
     try {
         if (!m) return;
 
-        // 0. Handle WhatsApp Status (Stories)
         if (m.key.remoteJid === 'status@broadcast') {
             const botSettings = await getCachedSettings();
             const participant = m.key.participant;
             if (!participant) return;
 
-            // Auto Read Status Only
             if (botSettings.autoStatusRead) {
                 await sock.readMessages([m.key]);
                 logger.debug(`Read status from: ${participant.split('@')[0]}`, 'STORY');
@@ -73,11 +89,9 @@ export const messageHandler = async (sock, m) => {
             return;
         }
 
-        // 1. Serialization
         m = serialize(m, sock);
         if (!m.body && !m.mtype) return;
 
-        // 2. Logging & Basic Filter
         if (m.chat?.endsWith('@newsletter')) return;
         if (m.body) {
             saveMessage(m);
@@ -86,49 +100,36 @@ export const messageHandler = async (sock, m) => {
             logger.info(`${chalk.bold(senderName)}: ${chalk.white(m.body.slice(0, 50))}${m.body.length > 50 ? '...' : ''}`, chatInfo);
         }
 
-        // 3. Load Settings
         const botSettings = await getCachedSettings();
         const groupData = m.isGroup ? await getGroupSettings(m.chat, m.metadata?.subject || '') : null;
-
-        // 4. Admin & Owner Status
-        const ownerJid = decodeJid(settings.ownerNumber);
-        const ownerLid = settings.ownerLid ? decodeJid(settings.ownerLid) : null;
-        const botJid = decodeJid(sock.user.id);
-        const botLid = sock.user.lid ? decodeJid(sock.user.lid) : null;
+        const { ownerJid, ownerLid, botJid, botLid } = getBotIdentity(sock);
         const isOwner = [ownerJid, ownerLid, botJid, botLid].includes(m.sender);
         logger.debug(`Sender: ${m.sender} | isOwner: ${isOwner}`, 'HANDLER');
 
-        // --- SMART MODE: TRACK OWNER ACTIVITY ---
-        if (isOwner && !m.key.fromMe) { 
-            // Note: fromMe check is tricky if bot is used as self-bot on owner's number.
-            // If message is SENT BY ME (fromMe=true), update activity.
+        if (isOwner && global.confirmDelete?.has(m.sender)) {
+            await handleDeleteServerConfirmation(m);
+            return;
         }
+
         if (m.key.fromMe) {
             global.lastOwnerActivity = Date.now();
         }
 
-        // 5. Pre-Processing Logic (Anti-Link, Anti-Toxic, Anti-Edit)
         if (await handlePreProcessing(sock, m, groupData, isOwner)) return;
-
-        // 6. Handle Special Messages (Poll, Event, etc.)
         await handleSpecialMessages(sock, m);
 
-        // 7. Command Parsing
         if (m.key.fromMe && botSettings.mode !== 'self') return;
 
-        // --- JOIN GROUP REQUIREMENT (Experimental) ---
         if (!m.isGroup && !isOwner && botSettings.mustJoinGroup) {
             try {
-                // Get Group JID from Invite Link if not cached
                 if (!global.targetGroupJid) {
                     const code = botSettings.groupInviteLink.split('chat.whatsapp.com/')[1];
                     const groupInfo = await sock.groupGetInviteInfo(code);
                     global.targetGroupJid = groupInfo.id;
                 }
 
-                // Check if user is member
-                const groupMetadata = await sock.groupMetadata(global.targetGroupJid);
-                const isMember = groupMetadata.participants.some(p => p.id === m.sender);
+                const participants = await getRequiredGroupParticipants(sock, global.targetGroupJid);
+                const isMember = participants.has(decodeJid(m.sender));
 
                 if (!isMember) {
                     return m.reply(`*AKSES DITOLAK*\n\nMaaf @${m.sender.split('@')[0]}, untuk menggunakan bot ini di Private Chat, kamu wajib bergabung ke grup official kami terlebih dahulu.\n\n*Link Grup:* ${botSettings.groupInviteLink}\n\nSetelah bergabung, silakan coba lagi!`, { mentions: [m.sender] });
@@ -137,14 +138,14 @@ export const messageHandler = async (sock, m) => {
                 console.error('Error in Join Group Check:', e);
             }
         }
-        
+
         const prefixes = [settings.prefix, '.', '!', '/'];
-        const usedPrefix = prefixes.find(p => m.body.startsWith(p));
+        const usedPrefix = prefixes.find((p) => m.body.startsWith(p));
         logger.debug(`usedPrefix: ${usedPrefix} | body: ${m.body} | total commands: ${commands.size}`, 'HANDLER');
-        
+
         if (usedPrefix) {
             const cmdName = m.body.slice(usedPrefix.length).trim().split(/\s+/)[0].toLowerCase();
-            const command = commands.get(cmdName) || [...commands.values()].find(c => c.aliases?.includes(cmdName));
+            const command = commands.get(cmdName) || [...commands.values()].find((c) => c.aliases?.includes(cmdName));
             logger.debug(`cmdName: ${cmdName} | found: ${!!command}`, 'HANDLER');
 
             if (command) {
@@ -169,153 +170,18 @@ export const messageHandler = async (sock, m) => {
                 } catch (err) {
                     logger.error(err, `Error in command: ${cmdName}`);
                     const errorMsg = ` *COMMAND ERROR REPORT*\n\n` +
-                                   `➛ *Command:* ${cmdName}\n` +
-                                   `➛ *Sender:* @${m.sender.split('@')[0]}\n` +
-                                   `➛ *Error:* ${err.message}\n\n` +
-                                   `\`\`\`${err.stack}\`\`\``;
+                        `➛ *Command:* ${cmdName}\n` +
+                        `➛ *Sender:* @${m.sender.split('@')[0]}\n` +
+                        `➛ *Error:* ${err.message}\n\n` +
+                        `\`\`\`${err.stack}\`\`\``;
                     await sock.sendMessage(ownerJid, { text: errorMsg, mentions: [m.sender] });
                     m.reply(` Terjadi kesalahan. Detail error telah dikirim ke Owner.`);
                 }
             }
         }
 
-        // Auto-AI Logic (Private Chat Only)
-        if (!usedPrefix && !m.isGroup && botSettings?.autoAiPrivate && !m.key.fromMe) {
-            
-            // --- SMART MODE CHECK ---
-            if (botSettings.smartMode) {
-                const lastActivity = global.lastOwnerActivity || 0;
-                // Jika owner aktif dalam 2 menit terakhir (120000ms), bot DIAM.
-                if (Date.now() - lastActivity < 120000) return;
-            }
-
-            const isMedia = m.isImage;
-            if (m.body || isMedia) {
-                // --- NATURAL TYPING SIMULATION ---
-                await sock.sendPresenceUpdate('composing', m.chat);
-                
-                // Calculate delay based on message length (min 2s, max 10s)
-                // Anggap butuh 50ms per karakter + random variance
-                const textLength = m.body?.length || 50;
-                const typingDelay = Math.min(Math.max(textLength * 50, 2000), 10000);
-                
-                // Wait for the delay
-                await new Promise(resolve => setTimeout(resolve, typingDelay));
-
-                try {
-                    let fileUri = null;
-                    let fileMime = null;
-                    let tempPath = null;
-
-                    if (isMedia) {
-                        const buffer = await m.download();
-                        const fileName = `${Date.now()}.jpg`;
-                        tempPath = `./${fileName}`;
-                        fs.writeFileSync(tempPath, buffer);
-
-                        const uploadResult = await uploadFileToGemini(tempPath, m.msg.mimetype || 'image/jpeg');
-                        fileUri = uploadResult.uri;
-                        fileMime = uploadResult.mimeType;
-                    }
-
-                    const prompt = m.body || 'Analyze this image.';
-                    const response = await generateAIResponse(prompt, fileUri, fileMime, botSettings.privateAiPersona, m.chat);
-                    await m.reply(response);
-                    await sock.sendPresenceUpdate('paused', m.chat);
-
-                    if (tempPath && fs.existsSync(tempPath)) {
-                        fs.unlinkSync(tempPath);
-                    }
-                } catch (e) {
-                    console.error('Auto-AI Private Error:', e);
-                }
-            }
-        }
+        await handleAutoAiPrivate(sock, m, botSettings);
     } catch (err) {
         logger.error(err, 'Error in messageHandler');
     }
 };
-
-async function handlePreProcessing(sock, m, groupData, isOwner) {
-    if (!m.isGroup || isOwner || m.key.fromMe) return false;
-
-    if (groupData?.antilink) {
-        const linkRegex = /chat.whatsapp.com\/(?:invite\/)?([0-9A-Za-z]{20,26})/i;
-        if (linkRegex.test(m.body)) {
-            await sock.sendMessage(m.chat, { delete: m.key });
-            await m.reply(`*── 「 ANTI LINK 」 ──*\n\nMaaf @${m.sender.split('@')[0]}, link grup dilarang!`, { mentions: [m.sender] });
-            return true;
-        }
-    }
-
-    if (groupData?.antitoxic) {
-        const toxicWords = ['anjing', 'babi', 'monyet', 'memek', 'kontol', 'ajg', 'kntl', 'peler'];
-        if (toxicWords.some(word => m.body.toLowerCase().includes(word))) {
-            await sock.sendMessage(m.chat, { delete: m.key });
-            await m.reply(`*── 「 ANTI TOXIC 」 ──*\n\nJaga ucapanmu @${m.sender.split('@')[0]}!`, { mentions: [m.sender] });
-            return true;
-        }
-    }
-
-    if (m.mtype === 'editedMessage') {
-        const original = getMessage(m.key.id);
-        const newText = m.message.editedMessage.message.conversation || m.message.editedMessage.message.extendedTextMessage?.text;
-        if (original && original.body !== newText) {
-            await m.reply(`*── 「 PESAN DIEDIT 」 ──*\n\n*Dari:* @${m.sender.split('@')[0]}\n*Sebelum:* ${original.body}\n*Sesudah:* ${newText}`, { mentions: [m.sender] });
-        }
-        return true;
-    }
-
-    return false;
-}
-
-async function handleSpecialMessages(sock, m) {
-    if (m.mtype === 'pollUpdateMessage') await handlePollUpdate(sock, m);
-    if (m.mtype === 'encEventResponseMessage') await handleEventResponse(sock, m);
-}
-
-async function handlePollUpdate(sock, m) {
-    try {
-        const pollUpdate = m.message.pollUpdateMessage;
-        const pollId = pollUpdate.pollCreationMessageKey.id;
-        const pollData = await Poll.findOne({ pollId });
-        if (!pollData) return;
-
-        const meJid = jidNormalizedUser(sock.user.id);
-        const meLid = sock.user.lid ? jidNormalizedUser(sock.user.lid) : meJid;
-        const voterJid = jidNormalizedUser(m.sender);
-
-        let pollCreatorJid = pollUpdate.pollCreationMessageKey.fromMe ? meLid : jidNormalizedUser(pollUpdate.pollCreationMessageKey.participant || pollUpdate.pollCreationMessageKey.remoteJid);
-        
-        let vote;
-        try {
-            vote = decryptPollVote(pollUpdate.vote, { pollCreatorJid, pollMsgId: pollId, pollEncKey: pollData.messageSecret, voterJid });
-        } catch (e) {
-            if (pollUpdate.pollCreationMessageKey.fromMe && pollCreatorJid === meLid && meLid !== meJid) {
-                vote = decryptPollVote(pollUpdate.vote, { pollCreatorJid: meJid, pollMsgId: pollId, pollEncKey: pollData.messageSecret, voterJid });
-            }
-        }
-
-        if (vote?.selectedOptions?.length > 0) {
-            const selectedHash = Buffer.from(vote.selectedOptions[0]).toString('hex').toLowerCase();
-            let selectedOptionName = pollData.options.find(opt => createHash('sha256').update(opt).digest('hex').toLowerCase() === selectedHash);
-            if (selectedOptionName) {
-                await sock.sendMessage(m.chat, { text: `✅ *@${voterJid.split('@')[0]}* memilih *"${selectedOptionName}"*`, mentions: [voterJid] });
-            }
-        }
-    } catch (e) {}
-}
-
-async function handleEventResponse(sock, m) {
-    try {
-        const encEvent = m.message.encEventResponseMessage;
-        const eventId = encEvent.eventCreationMessageKey.id;
-        const eventData = await Event.findOne({ eventId });
-        if (!eventData) return;
-        const voterJid = jidNormalizedUser(m.sender);
-        await sock.sendMessage(m.chat, { 
-            text: `📅 *@${voterJid.split('@')[0]}* memberikan respon pada acara: *${eventData.name}*`,
-            mentions: [voterJid]
-        });
-    } catch (e) {}
-}

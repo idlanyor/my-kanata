@@ -11,13 +11,13 @@ const toSlug = (value = '') =>
     .replace(/(^-|-$)/g, '');
 
 const DEFAULT_PTERO_PLANS = [
-  { id: 1, name: '100%', ram: 2048, disk: 3072, cpu: 100, price: 10000, desc: '2 GB RAM · 3 GB Storage' },
-  { id: 2, name: '200%', ram: 4096, disk: 5120, cpu: 200, price: 15000, desc: '4 GB RAM · 5 GB Storage' },
-  { id: 3, name: '300%', ram: 6144, disk: 7168, cpu: 300, price: 20000, desc: '6 GB RAM · 7 GB Storage' },
-  { id: 4, name: '400%', ram: 8192, disk: 10240, cpu: 400, price: 25000, desc: '8 GB RAM · 10 GB Storage' },
-  { id: 5, name: '500%', ram: 12288, disk: 12288, cpu: 500, price: 30000, desc: '12 GB RAM · 12 GB Storage' },
-  { id: 6, name: '600%', ram: 13312, disk: 20480, cpu: 600, price: 35000, desc: '13 GB RAM · 20 GB Storage' },
-  { id: 7, name: '700%', ram: 15360, disk: 25600, cpu: 700, price: 50000, desc: '15 GB RAM · 25 GB Storage' }
+  { id: 1, name: '100%', ram: 3072, disk: 3072, cpu: 100, price: 15000, desc: '3 GB RAM · 3 GB Storage' },
+  { id: 2, name: '200%', ram: 5120, disk: 5120, cpu: 200, price: 20000, desc: '5 GB RAM · 5 GB Storage' },
+  { id: 3, name: '300%', ram: 7168, disk: 7168, cpu: 300, price: 25000, desc: '7 GB RAM · 7 GB Storage' },
+  { id: 4, name: '400%', ram: 9216, disk: 10240, cpu: 400, price: 30000, desc: '9 GB RAM · 10 GB Storage' },
+  { id: 5, name: '500%', ram: 12288, disk: 12288, cpu: 500, price: 35000, desc: '12 GB RAM · 12 GB Storage' },
+  { id: 6, name: '600%', ram: 15360, disk: 20480, cpu: 600, price: 40000, desc: '15 GB RAM · 20 GB Storage' },
+  { id: 7, name: '700%', ram: 20480, disk: 25600, cpu: 700, price: 50000, desc: '20 GB RAM · 25 GB Storage' }
 ];
 
 export const listCategories = async (req, res, next) => {

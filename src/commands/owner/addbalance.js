@@ -20,40 +20,72 @@ export default {
     description: 'Add balance to a user via Ptero Email (Owner only)',
     category: 'Owner',
     execute: async (sock, m, args, text) => {
-        const input = args[0]; // Email
-        const amount = parseInt(args[1]);
+        // Cari mention atau JID (@s.whatsapp.net atau @lid) dari args
+        let targetJid = m.mentionedJid?.[0] || args.find(arg => arg.includes('@s.whatsapp.net') || arg.includes('@lid'));
+        
+        // Jika tidak ada JID/Mention, anggap argumen pertama yang bukan angka sebagai Email
+        let emailInput = !targetJid ? args.find(arg => arg.includes('@') && !arg.startsWith('@')) : null;
+        
+        // Cari jumlah (angka)
+        const amount = parseInt(args.find(arg => !isNaN(arg) && !arg.includes('@'))); 
 
-        if (!input || isNaN(amount)) {
+        if ((!targetJid && !emailInput) || isNaN(amount)) {
             return m.reply(`*Format Salah!*
 
 ` +
                 `Gunakan:
 ` +
-                `• ${settings.prefix}addbalance <email_ptero> <jumlah>
+                `• ${settings.prefix}addbalance <@tag/email/JID> <jumlah>
 
 ` +
-                `Contoh: ${settings.prefix}addbalance user@gmail.com 50000`);
+                `Contoh:
+` +
+                `• ${settings.prefix}addbalance @user 50000
+` +
+                `• ${settings.prefix}addbalance user@gmail.com 50000
+` +
+                `• ${settings.prefix}addbalance 628xxx@s.whatsapp.net 50000`);
         }
 
         try {
-            await m.reply('Mencari user berdasarkan email...');
+            let pteroUser = null;
 
-            // 1. Cari user di Pterodactyl berdasarkan email
-            const usersResp = await ptero.get(`/users?filter[email]=${input}`);
-            
-            if (usersResp.data.data.length === 0) {
-                return m.reply(`Gagal: Email *${input}* tidak ditemukan di panel Pterodactyl.`);
+            await m.reply('Memvalidasi akun di panel Pterodactyl...');
+
+            // 1. Validasi berdasarkan JID (Target JID sudah ketemu)
+            if (targetJid) {
+                const usersResp = await ptero.get(`/users?filter[external_id]=${targetJid}`);
+                
+                if (usersResp.data.data.length > 0) {
+                    pteroUser = usersResp.data.data[0].attributes;
+                } else {
+                    return m.reply(`*TOPUP GAGAL*
+
+User dengan ID *${targetJid.split('@')[0]}* belum terhubung (bind) dengan akun Pterodactyl manapun.
+Silakan minta user untuk melakukan .bind <email> terlebih dahulu.`);
+                }
+            } else if (emailInput) {
+                // 2. Validasi berdasarkan Email
+                const usersResp = await ptero.get(`/users?filter[email]=${emailInput}`);
+                
+                if (usersResp.data.data.length > 0) {
+                    pteroUser = usersResp.data.data[0].attributes;
+                    targetJid = pteroUser.external_id;
+
+                    if (!targetJid || !targetJid.includes('@')) {
+                        return m.reply(`*TOPUP GAGAL*
+
+Akun Ptero dengan email *${emailInput}* ditemukan, tetapi belum terhubung (bind) dengan WhatsApp.
+Silakan minta user untuk melakukan .bind ${emailInput} terlebih dahulu.`);
+                    }
+                } else {
+                    return m.reply(`*TOPUP GAGAL*
+
+Email *${emailInput}* tidak ditemukan di panel Pterodactyl.`);
+                }
             }
 
-            const pteroUser = usersResp.data.data[0].attributes;
-            const targetJid = pteroUser.external_id;
-
-            if (!targetJid || !targetJid.includes('@')) {
-                return m.reply(`Gagal: Akun Ptero ditemukan, tetapi belum terhubung (bind) dengan WhatsApp.
-Mintalah user untuk melakukan .bind ${input} terlebih dahulu.`);
-            }
-
-            // 2. Update saldo di database bot berdasarkan JID yang ditemukan
+            // 3. Update saldo di database bot
             let user = await User.findOne({ jid: targetJid });
             if (!user) {
                 user = await User.create({ jid: targetJid });
@@ -62,16 +94,23 @@ Mintalah user untuk melakukan .bind ${input} terlebih dahulu.`);
             user.balance += amount;
             await user.save();
 
+            const userNotice = `*PEMBERITAHUAN TOPUP*\n\n` +
+                `Halo @${targetJid.split('@')[0]},\n` +
+                `Saldo Anda telah berhasil ditambahkan sebesar *Rp ${amount.toLocaleString()}* oleh Owner.\n\n` +
+                `*Saldo Sekarang:* Rp ${user.balance.toLocaleString()}\n\n` +
+                `Terima kasih telah menggunakan layanan kami!`;
+
+            await sock.sendMessage(targetJid, { 
+                text: userNotice, 
+                mentions: [targetJid] 
+            });
+
             const successMsg = `*TOPUP BERHASIL*
 
-` +
-                `Email: ${pteroUser.email}
-` +
-                `WhatsApp: @${targetJid.split('@')[0]}
-` +
-                `Jumlah: + Rp ${amount.toLocaleString()}
-` +
-                `Saldo Sekarang: Rp ${user.balance.toLocaleString()}`;
+Email: ${pteroUser.email}
+WhatsApp: @${targetJid.split('@')[0]}
+Jumlah: + Rp ${amount.toLocaleString()}
+Saldo Sekarang: Rp ${user.balance.toLocaleString()}`;
 
             await sock.sendMessage(m.chat, { 
                 text: successMsg, 

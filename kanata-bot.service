@@ -1,12 +1,12 @@
 [Unit]
-Description=MyBot WhatsApp Bot Service
+Description=Kanata WhatsApp Bot Service
 After=network.target
 
 [Service]
 Type=simple
 User=roy
-WorkingDirectory=/home/roy/phopi/mybot
-ExecStart=/home/roy/.nvm/versions/node/v25.6.1/bin/node src/index.js
+WorkingDirectory=/home/roy/my-kanata
+ExecStart=/home/roy/.nvm/versions/node/v25.7.0/bin/node src/index.js
 Restart=always
 RestartSec=10
 Environment=NODE_ENV=production

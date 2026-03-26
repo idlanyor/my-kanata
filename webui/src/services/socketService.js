@@ -150,6 +150,24 @@ class SocketService {
     }
     return false;
   }
+
+  requestBotCommand(event, data, timeoutMs = 20000) {
+    return new Promise((resolve, reject) => {
+      if (!this.botSocket) {
+        reject(new Error('Bot is offline or not connected to WebSocket'));
+        return;
+      }
+
+      const timer = setTimeout(() => {
+        reject(new Error('Bot command timeout'));
+      }, timeoutMs);
+
+      this.botSocket.emit(event, data, (response = {}) => {
+        clearTimeout(timer);
+        resolve(response);
+      });
+    });
+  }
 }
 
 export const socketService = new SocketService();

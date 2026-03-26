@@ -6,23 +6,27 @@ export default {
     description: 'Download YouTube video',
     execute: async (sock, m, args, text) => {
         if (!text) return m.reply('Please provide a YouTube URL.');
+        const quality = '720';
         
         // console.log(`[DEBUG] ytmp4 triggered for URL: ${text}`);
         await m.reply('Processing your request...');
         
         try {
             // console.log(`[DEBUG] Fetching video API for: ${text}`);
-            const data = await fetchAPI('/youtube2/download', { url: text });
+            const data = await fetchAPI('https://api.ryzumi.net/api/downloader/ytmp4', { url: text, quality });
             
-            if (data.status !== 'success' || !data.full_url) {
+            if (!data || typeof data.url !== 'string') {
                 // console.log(`[DEBUG] ytmp4 API Failure:`, data);
                 return m.reply('Failed to fetch YouTube video. Make sure the URL is valid.');
             }
 
-            // console.log(`[DEBUG] ytmp4 success, sending video from: ${data.full_url.substring(0, 50)}...`);
+            const caption = ` *YouTube Downloaded*\n\nTitle: ${data.title || 'N/A'}\nChannel: ${data.author || 'N/A'}\nQuality: ${data.quality || `${quality}p`}\n\nSource: api.ryzumi.net`;
+            await m.reply(caption);
+
+            // console.log(`[DEBUG] ytmp4 success, sending video from: ${data.url.substring(0, 50)}...`);
             await sock.sendMessage(m.chat, { 
-                video: { url: data.full_url }, 
-                caption: ` *YouTube Downloaded*\n\nTitle: ${data.title || 'N/A'}\n\nPowered by KanataAPI`
+                video: { url: data.url },
+                mimetype: 'video/mp4'
             }, { quoted: m });
             
             // console.log(`[DEBUG] ytmp4 sent successfully`);

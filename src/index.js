@@ -74,11 +74,13 @@ const startBot = async () => {
         }
     }
 
-    let phoneNumber = null;
-    if (!state.creds.registered) {
+    let phoneNumber = process.env.BOT_PHONE_NUMBER || null;
+    if (!state.creds.registered && !phoneNumber) {
         console.log('\x1b[33m%s\x1b[0m', 'Bot not registered. Starting fresh pairing process.');
         const input = await question('Please enter your WhatsApp number (e.g. 628123456789): ');
         phoneNumber = input.trim();
+    } else if (!state.creds.registered && phoneNumber) {
+        console.log('\x1b[33m%s\x1b[0m', `Bot not registered. Using BOT_PHONE_NUMBER from .env: ${phoneNumber}`);
     }
 
     const connectToWhatsApp = async () => {
@@ -241,12 +243,18 @@ const startBot = async () => {
 
         sock.ev.on('creds.update', saveCreds);
         sock.ev.on('messages.upsert', async ({ messages, type }) => {
-            if (type === 'notify') {
-                for (const m of messages) { await messageHandler(sock, m); }
+            if (type === 'notify' && Array.isArray(messages) && messages.length > 0) {
+                await Promise.allSettled(
+                    messages.map((m) => messageHandler(sock, m))
+                );
             }
         });
 
-        botSocket.socket.off('bot:command').on('bot:command', async (data) => {
+        botSocket.socket.off('bot:command').on('bot:command', async (data, ack) => {
+            const reply = (payload) => {
+                if (typeof ack === 'function') ack(payload);
+            };
+
             if (data.command === 'group:sync') {
                 try {
                     const targetJid = data.jid;
@@ -254,6 +262,7 @@ const startBot = async () => {
                         const meta = await sock.groupMetadata(targetJid);
                         await Group.findOneAndUpdate({ jid: targetJid }, { name: meta.subject, announce: !!meta.announce, restrict: !!meta.restrict }, { upsert: true });
                         botSocket.emitLog('Synced: ' + meta.subject, 'success');
+                        reply({ ok: true });
                         return;
                     }
                     logger.info('Starting Smart Group Sync...');
@@ -271,7 +280,35 @@ const startBot = async () => {
                         } catch (e) { logger.warn('Fail: ' + jid); if(e.message.includes('rate')) break; }
                     }
                     botSocket.emitLog('Smart Sync complete. Updated ' + count + ' groups', 'success');
-                } catch (err) { logger.error(err); }
+                    reply({ ok: true, updated: count });
+                } catch (err) { logger.error(err); reply({ ok: false, error: err.message }); }
+                return;
+            }
+
+            if (data.command === 'group:delete') {
+                const targetJid = data.jid;
+                if (!targetJid) {
+                    reply({ ok: false, error: 'Group JID is required' });
+                    return;
+                }
+
+                try {
+                    await sock.groupLeave(targetJid);
+                    botSocket.emitLog(`Left group: ${data.groupName || targetJid}`, 'success');
+                    reply({ ok: true, alreadyLeft: false });
+                } catch (err) {
+                    const message = String(err?.message || err || '');
+                    const safeAlreadyLeft = /not\s+a?\s*participant|not\s*found|404|bad request|forbidden|group.*not.*found/i.test(message);
+                    if (safeAlreadyLeft) {
+                        botSocket.emitLog(`Group leave skipped (already left): ${data.groupName || targetJid}`, 'warning');
+                        reply({ ok: true, alreadyLeft: true });
+                        return;
+                    }
+
+                    logger.error(err);
+                    reply({ ok: false, error: err.message || 'Failed to leave group' });
+                }
+                return;
             }
         });
     };

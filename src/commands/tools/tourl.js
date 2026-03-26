@@ -1,6 +1,5 @@
-import axios from 'axios';
-import FormData from 'form-data';
 import { settings } from '../../config/settings.js';
+import { uploadBufferToKanata } from '../../lib/mediaUpload.js';
 
 export default {
     name: 'tourl',
@@ -21,28 +20,20 @@ export default {
 
             const buffer = await m.downloadMediaMessage(quoted);
             
-            const formData = new FormData();
-            // Extension mapping
             const ext = mime.split('/')[1]?.split(';')[0] || 'bin';
             const filename = msg.fileName || msg.filename || `file_${Date.now()}.${ext}`;
-            
-            formData.append('file', buffer, { 
-                filename, 
-                contentType: mime 
+
+            const { url, response } = await uploadBufferToKanata(buffer, {
+                filename,
+                mimeType: mime,
+                timeout: 60000
             });
 
-            const response = await axios.post('https://api.kanata.web.id/upload', formData, {
-                headers: {
-                    ...formData.getHeaders(),
-                    'accept': 'application/json'
-                }
-            });
-
-            if (response.data && response.data.url) {
-                const { url, filename, content_type, original_filename } = response.data;
+            if (url) {
+                const { filename: responseFilename, content_type, original_filename } = response;
                 const caption = ` *Upload Success*\n\n` +
                                 ` *URL:* ${url}\n` +
-                                ` *File Name:* ${original_filename || filename}\n` +
+                                ` *File Name:* ${original_filename || responseFilename || filename}\n` +
                                 ` *Mime Type:* ${content_type}`;
                 
                 await m.reply(caption);

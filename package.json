@@ -12,6 +12,7 @@
   "type": "module",
   "dependencies": {
     "@google/genai": "^1.39.0",
+    "@spinzaf/freefire-api": "^1.0.5",
     "@whiskeysockets/baileys": "file:./kanata-baileys",
     "adm-zip": "^0.5.16",
     "axios": "^1.13.4",

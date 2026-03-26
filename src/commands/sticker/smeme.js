@@ -2,6 +2,7 @@ import axios from 'axios';
 import { downloadContentFromMessage } from '@whiskeysockets/baileys';
 import { Sticker, StickerTypes } from 'wa-sticker-formatter';
 import { settings } from '../../config/settings.js';
+import { uploadBufferToKanata } from '../../lib/mediaUpload.js';
 
 export default {
     name: 'smeme',
@@ -58,25 +59,11 @@ export default {
                 bottomText = encodeURIComponent(text);
             }
 
-            // Upload to user's custom API (api.kanata.web.id)
-            const FormData = (await import('form-data')).default;
-            const formData = new FormData();
-            // Using the filename from the original or a generic one
-            formData.append('file', buffer, { filename: 'image.jpg', contentType: mime });
-
-            const uploadRes = await axios.post('https://api.kanata.web.id/upload', formData, {
-                headers: {
-                    ...formData.getHeaders(),
-                    'accept': 'application/json'
-                }
+            const { url: imageUrl } = await uploadBufferToKanata(buffer, {
+                filename: 'image.jpg',
+                mimeType: mime,
+                timeout: 60000
             });
-
-            // Extract URL from the custom API response
-            const imageUrl = uploadRes.data.url;
-
-            if (!imageUrl) {
-                throw new Error('Failed to get URL from custom API');
-            }
 
             // Now use the memegen API
             const smemeUrl = `https://api.memegen.link/images/custom/${topText}/${bottomText}.png?background=${imageUrl}`;

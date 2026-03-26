@@ -3,6 +3,8 @@ import { Group } from '../models/Group.js';
 import { Server } from '../models/Server.js';
 import { Transaction } from '../models/Transaction.js';
 import { Product } from '../models/Product.js';
+import { socketService } from '../services/socketService.js';
+import { logAction } from '../services/auditService.js';
 
 const models = {
   users: User,
@@ -166,6 +168,49 @@ export const deleteData = async (req, res, next) => {
         const { collection, id } = req.params;
         const model = models[collection];
         if (!model) return res.status(404).json({ error: 'Collection not found' });
+
+        if (collection === 'groups') {
+            const group = await Group.findById(id).lean();
+            if (!group) return res.status(404).json({ error: 'Document not found' });
+
+            let leaveResult = null;
+            try {
+                leaveResult = await socketService.requestBotCommand('bot:command', {
+                    command: 'group:delete',
+                    jid: group.jid,
+                    groupId: String(group._id),
+                    groupName: group.name || ''
+                });
+            } catch (error) {
+                return res.status(503).json({ error: error.message || 'Bot is offline or not connected to WebSocket' });
+            }
+
+            if (!leaveResult?.ok) {
+                return res.status(500).json({ error: leaveResult?.error || 'Failed to make bot leave the group' });
+            }
+
+            const deleted = await model.findByIdAndDelete(id);
+            if (!deleted) return res.status(404).json({ error: 'Document not found' });
+
+            await logAction({
+                req,
+                action: 'DELETE_GROUP',
+                details: {
+                    groupId: String(deleted._id),
+                    jid: deleted.jid,
+                    name: deleted.name,
+                    botLeftGroup: true,
+                    alreadyLeft: !!leaveResult.alreadyLeft
+                }
+            });
+
+            return res.json({
+                ok: true,
+                message: 'Group deleted and bot left the group',
+                botLeftGroup: true,
+                alreadyLeft: !!leaveResult.alreadyLeft
+            });
+        }
 
         const deleted = await model.findByIdAndDelete(id);
         if (!deleted) return res.status(404).json({ error: 'Document not found' });
