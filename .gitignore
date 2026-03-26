@@ -6,3 +6,5 @@ node_modules/
 *.jpg
 *test-*
 auth_info_baileys
+backups/
+AGENTS.md
