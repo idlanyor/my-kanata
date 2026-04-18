@@ -4,12 +4,15 @@ import {
   createPartFromUri,
 } from "@google/genai";
 
-// Store chat history in memory
+// Store chat history in memory with TTL and metadata
 const chatHistories = new Map();
+const CHAT_HISTORY_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const MAX_CHAT_HISTORY_SIZE = 15; // Reduced from 20
+const MAX_TOTAL_CHATS = 100; // Prevent memory overflow
 
 /**
  * Clear chat history for a specific ID
- * @param {string} chatId 
+ * @param {string} chatId
  */
 export const clearChatHistory = (chatId) => {
     if (chatHistories.has(chatId)) {
@@ -17,6 +20,65 @@ export const clearChatHistory = (chatId) => {
         return true;
     }
     return false;
+};
+
+/**
+ * Cleanup old chat histories (called periodically)
+ */
+export const cleanupChatHistories = () => {
+    const now = Date.now();
+    let cleaned = 0;
+    
+    // Remove expired chats
+    for (const [chatId, data] of chatHistories.entries()) {
+        if (now - data.timestamp > CHAT_HISTORY_TTL_MS) {
+            chatHistories.delete(chatId);
+            cleaned++;
+        }
+    }
+    
+    // If still too many chats, remove oldest ones
+    if (chatHistories.size > MAX_TOTAL_CHATS) {
+        const sorted = [...chatHistories.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp);
+        const toRemove = sorted.slice(0, chatHistories.size - MAX_TOTAL_CHATS);
+        for (const [chatId] of toRemove) {
+            chatHistories.delete(chatId);
+            cleaned++;
+        }
+    }
+    
+    return cleaned;
+};
+
+/**
+ * Get chat history with automatic cleanup
+ */
+const getChatHistory = (chatId) => {
+    const now = Date.now();
+    const existing = chatHistories.get(chatId);
+    
+    // Check if expired
+    if (existing && now - existing.timestamp > CHAT_HISTORY_TTL_MS) {
+        chatHistories.delete(chatId);
+        return null;
+    }
+    
+    return existing;
+};
+
+/**
+ * Set chat history with timestamp
+ */
+const setChatHistory = (chatId, history) => {
+    // Cleanup if map is getting too large
+    if (chatHistories.size >= MAX_TOTAL_CHATS) {
+        cleanupChatHistories();
+    }
+    
+    chatHistories.set(chatId, {
+        history,
+        timestamp: Date.now()
+    });
 };
 
 /**
@@ -89,18 +151,18 @@ Aturan:
     }
 
     let contents;
+    let history = [];
+    
     if (chatId) {
-        if (!chatHistories.has(chatId)) {
-            chatHistories.set(chatId, []);
-        }
-        const history = chatHistories.get(chatId);
-        
+        const chatData = getChatHistory(chatId);
+        history = chatData?.history || [];
+
         // Add user message to history
         history.push(createUserContent(parts));
 
-        // Limit history to last 20 messages
-        if (history.length > 20) {
-            history.splice(0, history.length - 20);
+        // Limit history to last MAX_CHAT_HISTORY_SIZE messages
+        if (history.length > MAX_CHAT_HISTORY_SIZE) {
+            history.splice(0, history.length - MAX_CHAT_HISTORY_SIZE);
         }
         contents = history;
     } else {
@@ -116,12 +178,12 @@ Aturan:
     const aiResponseText = response.text;
 
     if (chatId) {
-        const history = chatHistories.get(chatId);
         // Add model response to history
         history.push({
             role: "model",
             parts: [{ text: aiResponseText }]
         });
+        setChatHistory(chatId, history);
     }
 
     // Clean response text: Convert Markdown bold (**) to WhatsApp bold (*)

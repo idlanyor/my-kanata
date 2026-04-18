@@ -1,7 +1,7 @@
 export default {
     name: 'webview',
     description: 'Tes tombol Webview (Eksperimental)',
-    category: 'General',
+    category: 'Info',
     execute: async (sock, m, args, text) => {
         const interactiveMessage = {
             header: {

@@ -1,7 +1,7 @@
 import { downloadContentFromMessage } from '@whiskeysockets/baileys';
 import { exec } from 'child_process';
 import fs from 'fs';
-import path from 'path';
+import { makeResultPath } from '../../lib/resultPath.js';
 
 const getRandom = (ext) => {
     return `${Math.floor(Math.random() * 10000)}${ext}`;
@@ -34,8 +34,8 @@ export default {
 
             const fileName = getRandom(isAudio ? '.mp3' : '.mp4');
             const outputFileName = getRandom('.opus');
-            const filePath = path.join('./', fileName);
-            const outputFilePath = path.join('./', outputFileName);
+            const filePath = makeResultPath(fileName);
+            const outputFilePath = makeResultPath(outputFileName);
 
             fs.writeFileSync(filePath, buffer);
 

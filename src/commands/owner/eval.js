@@ -69,6 +69,19 @@ const withNvmBootstrap = (command) => {
     return parts.join(' ; ');
 };
 
+const replyUncut = async (sock, m, text, fileName) => {
+    const payload = util.format(text ?? '');
+    try {
+        return await m.reply(payload || 'Done.');
+    } catch {
+        return sock.sendMessage(m.chat, {
+            document: Buffer.from(payload || 'Done.', 'utf-8'),
+            mimetype: 'text/plain',
+            fileName
+        }, { quoted: m });
+    }
+};
+
 export default {
     name: 'eval',
     aliases: ['exec', 'x', '>'],
@@ -95,17 +108,14 @@ export default {
 
             exec(shellCommand, options, (err, stdout, stderr) => {
                 if (err) {
-                    const errOutput = [err.message, stderr, stdout].filter(Boolean).join('\n').slice(0, 3800);
-                    return m.reply(util.format(errOutput));
+                    const errOutput = [err.message, stderr, stdout].filter(Boolean).join('\n');
+                    return replyUncut(sock, m, errOutput, 'exec-error.txt');
                 }
 
                 const output = [stdout, stderr].filter(Boolean).join('\n').trim();
-                if (!output) return m.reply('Done.');
+                if (!output) return replyUncut(sock, m, 'Done.', 'exec-output.txt');
 
-                const chunks = output.match(/[\s\S]{1,3500}/g) || [];
-                for (const chunk of chunks) {
-                    m.reply(util.format(chunk));
-                }
+                return replyUncut(sock, m, output, 'exec-output.txt');
             });
         } 
         
@@ -113,10 +123,10 @@ export default {
             if (!text) return m.reply('Provide JS code.');
             try {
                 let evaled = await eval(text);
-                if (typeof evaled !== 'string') evaled = util.inspect(evaled);
-                await m.reply(evaled);
+                if (typeof evaled !== 'string') evaled = util.inspect(evaled, { depth: null, maxArrayLength: null, maxStringLength: null });
+                await replyUncut(sock, m, evaled, 'eval-output.txt');
             } catch (err) {
-                await m.reply(util.format(err));
+                await replyUncut(sock, m, err, 'eval-error.txt');
             }
         }
     }

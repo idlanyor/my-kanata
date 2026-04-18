@@ -2,7 +2,7 @@ import { GoogleGenAI, createUserContent, createPartFromUri } from "@google/genai
 import { downloadContentFromMessage } from '@whiskeysockets/baileys';
 import Transaction from '../../database/models/Transaction.js';
 import fs from 'fs';
-import path from 'path';
+import { makeResultPath } from '../../lib/resultPath.js';
 
 const ai = new GoogleGenAI({
     apiKey: process.env.GEMINI_API_KEY
@@ -18,6 +18,7 @@ export default {
     execute: async (sock, m, args, text) => {
         if (!process.env.GEMINI_API_KEY) return m.reply('GEMINI_API_KEY belum diatur.');
 
+        let tempPath = null;
         try {
             const isQuoted = !!m.quoted;
             const msg = isQuoted ? m.quoted : m.msg;
@@ -29,7 +30,6 @@ export default {
             let prompt = text;
             let fileUri = null;
             let fileMime = null;
-            let tempPath = null;
 
             if (isAudio || isImage) {
                 const mediaType = isAudio ? 'audio' : 'image';
@@ -39,7 +39,7 @@ export default {
                 for await (const chunk of stream) buffer = Buffer.concat([buffer, chunk]);
 
                 const ext = isAudio ? '.mp3' : '.jpg';
-                tempPath = path.resolve(getRandom(ext));
+                tempPath = makeResultPath(getRandom(ext));
                 fs.writeFileSync(tempPath, buffer);
 
                 const myfile = await ai.files.upload({

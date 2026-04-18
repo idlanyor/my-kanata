@@ -4,6 +4,7 @@ export default {
     name: 'ytmp3',
     aliases: ['ytaudio', 'yta'],
     description: 'Download YouTube audio',
+    category: 'Downloader',
     execute: async (sock, m, args, text) => {
         if (!text) return m.reply('Please provide a YouTube URL.');
         

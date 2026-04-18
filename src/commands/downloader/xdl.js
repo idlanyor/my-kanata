@@ -4,6 +4,7 @@ export default {
     name: 'xdl',
     aliases: ['twdl'],
     description: 'Download Twitter/X video',
+    category: 'Downloader',
     execute: async (sock, m, args, text) => {
         if (!text) return m.reply('Please provide a Twitter/X URL.');
 

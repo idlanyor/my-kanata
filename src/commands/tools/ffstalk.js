@@ -116,7 +116,7 @@ export default {
             let api = null;
             if (typeof FreeFireAPI === 'function') {
                 api = new FreeFireAPI();
-                await api.login('4338411769', 'RapzID_BISHAL_XQDWJ');
+                await api.login(process.env.FFSTALK_ID, process.env.FFSTALK_ACCOUNT);
             }
 
             const fnCandidates = [

@@ -3,6 +3,7 @@ import { downloadContentFromMessage } from '@whiskeysockets/baileys';
 import fs from 'fs';
 import path from 'path';
 import { settings } from '../../config/settings.js';
+import { makeResultPath } from '../../lib/resultPath.js';
 
 const getRandom = (ext) => {
     return `${Math.floor(Math.random() * 10000)}${ext}`;
@@ -41,8 +42,8 @@ export default {
             }
 
             // Save temporary input file
-            const fileName = msg.fileName || getRandom(isImage ? '.jpg' : '.docx');
-            const tempInputPath = path.resolve(fileName);
+            const fileName = path.basename(msg.fileName || getRandom(isImage ? '.jpg' : '.docx'));
+            const tempInputPath = makeResultPath(fileName);
             fs.writeFileSync(tempInputPath, buffer);
 
             // Initialize iLovePDF
@@ -56,7 +57,7 @@ export default {
             await task.addFile(tempInputPath);
             await task.process();
             
-            const tempOutputPath = path.resolve(getRandom('.pdf'));
+            const tempOutputPath = makeResultPath(getRandom('.pdf'));
             await task.download(tempOutputPath);
             
             // Ensure file exists and has content before reading

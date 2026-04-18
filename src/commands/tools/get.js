@@ -37,9 +37,18 @@ export default {
                     const json = JSON.parse(textData);
                     result = JSON.stringify(json, null, 2);
                 } catch (e) {
-                    result = textData.slice(0, 4000); // Limit text length
+                    result = textData;
                 }
-                await m.reply(` *Response:* \n${result}`);
+                try {
+                    await m.reply(` *Response:* \n${result}`);
+                } catch (sendErr) {
+                    await sock.sendMessage(m.chat, {
+                        document: Buffer.from(result, 'utf-8'),
+                        mimetype: 'text/plain',
+                        fileName: 'get-response.txt',
+                        caption: `Status: ${response.status} ${response.statusText}`
+                    }, { quoted: m });
+                }
             } else {
                  // Send as document for other types
                  const ext = contentType.split('/')[1]?.split(';')[0] || 'bin';

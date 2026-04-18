@@ -4,6 +4,7 @@ export default {
     name: 'ytmp4',
     aliases: ['ytvideo', 'ytdl'],
     description: 'Download YouTube video',
+    category: 'Downloader',
     execute: async (sock, m, args, text) => {
         if (!text) return m.reply('Please provide a YouTube URL.');
         const quality = '720';

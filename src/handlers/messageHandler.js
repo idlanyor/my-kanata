@@ -13,8 +13,11 @@ import {
     handleSpecialMessages,
     handleAutoAiPrivate
 } from './messageFlow.js';
+import { handleButtons } from './buttonHandler.js';
 
 export { clearSettingsCache } from './messageFlow.js';
+
+const processingMessages = new Set();
 
 const getBotIdentity = (sock) => {
     const ownerJid = decodeJid(settings.ownerNumber);
@@ -74,9 +77,11 @@ const handleDeleteServerConfirmation = async (m) => {
 };
 
 export const messageHandler = async (sock, m) => {
-    try {
-        if (!m) return;
+    if (!m || !m.key || !m.key.id) return;
+    if (processingMessages.has(m.key.id)) return;
+    processingMessages.add(m.key.id);
 
+    try {
         if (m.key.remoteJid === 'status@broadcast') {
             const botSettings = await getCachedSettings();
             const participant = m.key.participant;
@@ -95,17 +100,18 @@ export const messageHandler = async (sock, m) => {
         if (m.chat?.endsWith('@newsletter')) return;
         if (m.body) {
             saveMessage(m);
-            const senderName = m.pushName || m.sender.split('@')[0];
+            const senderName = m.pushName || (m.sender ? m.sender.split('@')[0] : 'Unknown');
             const chatInfo = m.isGroup ? `[${m.metadata?.subject || 'Group'}]` : '[Private]';
             logger.info(`${chalk.bold(senderName)}: ${chalk.white(m.body.slice(0, 50))}${m.body.length > 50 ? '...' : ''}`, chatInfo);
         }
 
-        const botSettings = await getCachedSettings();
-        const groupData = m.isGroup ? await getGroupSettings(m.chat, m.metadata?.subject || '') : null;
         const { ownerJid, ownerLid, botJid, botLid } = getBotIdentity(sock);
-        const isOwner = [ownerJid, ownerLid, botJid, botLid].includes(m.sender);
+        const isOwner = m.sender ? [ownerJid, ownerLid, botJid, botLid].includes(m.sender) : false;
         logger.debug(`Sender: ${m.sender} | isOwner: ${isOwner}`, 'HANDLER');
 
+        if (!m.sender) return;
+
+        // Check for delete server confirmation early (owner only)
         if (isOwner && global.confirmDelete?.has(m.sender)) {
             await handleDeleteServerConfirmation(m);
             return;
@@ -115,8 +121,15 @@ export const messageHandler = async (sock, m) => {
             global.lastOwnerActivity = Date.now();
         }
 
+        // Fetch settings once and reuse
+        const botSettings = await getCachedSettings();
+        const groupData = m.isGroup ? await getGroupSettings(m.chat, m.metadata?.subject || '') : null;
+
         if (await handlePreProcessing(sock, m, groupData, isOwner)) return;
         await handleSpecialMessages(sock, m);
+
+        // --- UNIVERSAL BUTTON DISPATCHER ---
+        if (await handleButtons(sock, m, isOwner)) return;
 
         if (m.key.fromMe && botSettings.mode !== 'self') return;
 
@@ -183,5 +196,7 @@ export const messageHandler = async (sock, m) => {
         await handleAutoAiPrivate(sock, m, botSettings);
     } catch (err) {
         logger.error(err, 'Error in messageHandler');
+    } finally {
+        processingMessages.delete(m.key.id);
     }
 };

@@ -6,7 +6,7 @@ import {
 import { downloadContentFromMessage } from '@whiskeysockets/baileys';
 import { settings } from '../../config/settings.js';
 import fs from 'fs';
-import path from 'path';
+import { makeResultPath } from '../../lib/resultPath.js';
 
 const ai = new GoogleGenAI({
     apiKey: process.env.GEMINI_API_KEY
@@ -43,7 +43,7 @@ export default {
             }
             
             const ext = '.jpg';
-            tempPath = path.resolve(getRandom(ext));
+            tempPath = makeResultPath(getRandom(ext));
             fs.writeFileSync(tempPath, buffer);
 
             const myfile = await ai.files.upload({

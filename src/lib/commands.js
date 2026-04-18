@@ -5,6 +5,7 @@ import chokidar from 'chokidar';
 import logger from './logger.js';
 
 const commands = new Map();
+const buttonHandlers = new Map();
 const commandsDir = path.resolve('src/commands');
 
 /**
@@ -18,7 +19,7 @@ export const loadCommands = async () => {
     for (const file of files) {
         await importCommand(file);
     }
-    console.log(`\x1b[32m%s\x1b[0m`, `✅ Loaded ${commands.size} total commands/aliases`);
+    console.log(`\x1b[32m%s\x1b[0m`, `✅ Loaded ${commands.size} total commands/aliases and ${buttonHandlers.size} button handlers`);
 
     // 2. Setup Watcher for Hot-Reload
     const watcher = chokidar.watch(commandsDir, {
@@ -74,6 +75,12 @@ const importCommand = async (filePath) => {
                         if (alias) commands.set(alias.toLowerCase(), cmd);
                     });
                 }
+
+                // REGISTER BUTTON HANDLER AUTOMATICALLY
+                if (cmd.buttonPrefix && typeof cmd.handleButton === 'function') {
+                    buttonHandlers.set(cmd.buttonPrefix.toLowerCase(), cmd.handleButton);
+                }
+
                 return true;
             }
             return false;
@@ -112,4 +119,4 @@ const unloadCommand = (filePath) => {
     }
 };
 
-export { commands };
+export { commands, buttonHandlers };

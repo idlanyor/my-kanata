@@ -5,7 +5,6 @@ import { settings } from '../config/settings.js';
 import Settings from '../database/models/Settings.js';
 import Group from '../database/models/Group.js';
 import Poll from '../database/models/Poll.js';
-import Event from '../database/models/Event.js';
 import { getMessage } from '../lib/msgStore.js';
 import { generateAIResponse, uploadFileToGemini } from '../lib/ai.js';
 
@@ -13,11 +12,13 @@ let settingsCache = null;
 let lastCacheTime = 0;
 const groupCache = new Map();
 const requiredGroupParticipantsCache = new Map();
-const REQUIRED_GROUP_PARTICIPANTS_TTL_MS = 2 * 60 * 1000;
+const SETTINGS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes (was 1 minute)
+const GROUP_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes (was 1 minute)
+const REQUIRED_GROUP_PARTICIPANTS_TTL_MS = 5 * 60 * 1000; // 5 minutes (was 2 minutes)
 
 export const getCachedSettings = async () => {
     const now = Date.now();
-    if (!settingsCache || now - lastCacheTime > 60000) {
+    if (!settingsCache || now - lastCacheTime > SETTINGS_CACHE_TTL_MS) {
         settingsCache = await Settings.findOne({ id: 'bot_settings' }) || await Settings.create({ id: 'bot_settings' });
         lastCacheTime = now;
     }
@@ -27,7 +28,7 @@ export const getCachedSettings = async () => {
 export const getGroupSettings = async (jid, subject = '') => {
     const now = Date.now();
     const cached = groupCache.get(jid);
-    if (cached && (now - cached.timestamp < 60000)) return cached.data;
+    if (cached && (now - cached.timestamp < GROUP_CACHE_TTL_MS)) return cached.data;
 
     let data = await Group.findOne({ jid });
     if (!data) {
@@ -48,6 +49,32 @@ export const clearSettingsCache = () => {
     settingsCache = null;
     groupCache.clear();
     requiredGroupParticipantsCache.clear();
+};
+
+/**
+ * Periodic cleanup for stale cache entries
+ */
+export const cleanupCaches = () => {
+    const now = Date.now();
+    let cleaned = 0;
+    
+    // Cleanup group cache
+    for (const [jid, cached] of groupCache.entries()) {
+        if (now - cached.timestamp > GROUP_CACHE_TTL_MS * 2) {
+            groupCache.delete(jid);
+            cleaned++;
+        }
+    }
+    
+    // Cleanup required group participants cache
+    for (const [jid, cached] of requiredGroupParticipantsCache.entries()) {
+        if (now - cached.timestamp > REQUIRED_GROUP_PARTICIPANTS_TTL_MS * 2) {
+            requiredGroupParticipantsCache.delete(jid);
+            cleaned++;
+        }
+    }
+    
+    return cleaned;
 };
 
 export const getRequiredGroupParticipants = async (sock, groupJid) => {
@@ -98,7 +125,6 @@ export const handlePreProcessing = async (sock, m, groupData, isOwner) => {
 
 export const handleSpecialMessages = async (sock, m) => {
     if (m.mtype === 'pollUpdateMessage') await handlePollUpdate(sock, m);
-    if (m.mtype === 'encEventResponseMessage') await handleEventResponse(sock, m);
 };
 
 const handlePollUpdate = async (sock, m) => {
@@ -185,37 +211,24 @@ const handlePollUpdate = async (sock, m) => {
     } catch {}
 };
 
-const handleEventResponse = async (sock, m) => {
-    try {
-        const encEvent = m.message.encEventResponseMessage;
-        const eventId = encEvent.eventCreationMessageKey.id;
-        const eventData = await Event.findOne({ eventId });
-        if (!eventData) return;
-        const voterJid = jidNormalizedUser(m.sender);
-        await sock.sendMessage(m.chat, {
-            text: `📅 *@${voterJid.split('@')[0]}* memberikan respon pada acara: *${eventData.name}*`,
-            mentions: [voterJid]
-        });
-    } catch {}
-};
-
 export const handleAutoAiPrivate = async (sock, m, botSettings) => {
     if (!botSettings?.autoAiPrivate || m.isGroup || m.key.fromMe) return;
 
     const isMedia = m.isImage;
     if (!(m.body || isMedia)) return;
 
-    await sock.sendPresenceUpdate('composing', m.chat);
-
     const textLength = m.body?.length || 50;
     const configuredDelay = Number(process.env.AUTO_AI_TYPING_DELAY_MS);
+    // Reduced default delay: 10ms per char, min 100ms, max 1000ms (was 20ms, 300-2000ms)
     const typingDelay = Number.isFinite(configuredDelay) && configuredDelay >= 0
         ? configuredDelay
-        : Math.min(Math.max(textLength * 20, 300), 2000);
+        : Math.min(Math.max(textLength * 10, 100), 1000);
 
     if (typingDelay > 0) {
         await new Promise(resolve => setTimeout(resolve, typingDelay));
     }
+
+    await sock.sendPresenceUpdate('composing', m.chat);
 
     let tempPath = null;
     try {

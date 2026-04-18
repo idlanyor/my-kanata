@@ -1,6 +1,7 @@
 .env
 node_modules/
 *.mp3
+*.mp4
 *.docx
 *.txt
 *.jpg
@@ -8,3 +9,5 @@ node_modules/
 auth_info_baileys
 backups/
 AGENTS.md
+.cache
+/webui

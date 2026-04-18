@@ -1,8 +1,8 @@
 import { exec } from 'child_process';
 import fs from 'fs';
-import path from 'path';
 import { Sticker, StickerTypes } from 'wa-sticker-formatter';
 import { settings } from '../../config/settings.js';
+import { makeResultPath } from '../../lib/resultPath.js';
 
 const getRandom = (ext) => `${Math.floor(Math.random() * 10000)}${ext}`;
 
@@ -27,8 +27,8 @@ export default {
         await m.reply(` Sedang memproses... Menghapus warna: #${color}
 _Tunggu sebentar, proses ini cukup berat._`);
 
-        const inputPath = path.resolve(getRandom('.mp4'));
-        const outputPath = path.resolve(getRandom('.webp'));
+        const inputPath = makeResultPath(getRandom('.mp4'));
+        const outputPath = makeResultPath(getRandom('.webp'));
 
         try {
             // 1. Download Video

@@ -1,4 +1,4 @@
-import { Jimp } from "jimp";
+import Jimp from "jimp";
 import path from "path";
 
 // Penampung cache biar nggak download/resize terus-menerus
@@ -13,7 +13,7 @@ const getThumbnailBuffer = async (source) => {
     try {
         const image = await Jimp.read(source);
         // Menggunakan .cover agar gambar memenuhi area 480x270 tanpa distorsi (crop tengah)
-        const buffer = await image.cover({ w: 480, h: 270 }).getBuffer("image/jpeg");
+        const buffer = await image.cover(480, 270).getBufferAsync("image/jpeg");
         cache.set(source, buffer);
         return buffer;
     } catch (e) {

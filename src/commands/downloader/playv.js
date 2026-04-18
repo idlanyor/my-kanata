@@ -5,6 +5,7 @@ export default {
     name: 'playv',
     aliases: ['playvideo', 'pv'],
     description: 'Search and play video from YouTube',
+    category: 'Downloader',
     execute: async (sock, m, args, text) => {
         if (!text) return m.reply('Please provide a song title or YouTube URL.');
 

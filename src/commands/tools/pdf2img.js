@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { settings } from '../../config/settings.js';
 import AdmZip from 'adm-zip';
+import { makeResultPath } from '../../lib/resultPath.js';
 
 const getRandom = (ext) => {
     return `${Math.floor(Math.random() * 10000)}${ext}`;
@@ -39,7 +40,7 @@ export default {
                 buffer = Buffer.concat([buffer, chunk]);
             }
 
-            const tempPdfPath = path.resolve(getRandom('.pdf'));
+            const tempPdfPath = makeResultPath(getRandom('.pdf'));
             fs.writeFileSync(tempPdfPath, buffer);
 
             const ilovepdf = new ILovePDfSdk(process.env.ILOVEPDF_PUBLIC_KEY, process.env.ILOVEPDF_SECRET_KEY);
@@ -48,7 +49,7 @@ export default {
             await task.addFile(tempPdfPath);
             await task.process();
             
-            const tempOutputPath = path.resolve(getRandom('.bin'));
+            const tempOutputPath = makeResultPath(getRandom('.bin'));
             await task.download(tempOutputPath);
             
             // Wait a bit for filesystem

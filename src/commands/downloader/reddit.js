@@ -4,6 +4,7 @@ export default {
     name: 'reddit',
     aliases: ['redditdl'],
     description: 'Download Reddit video',
+    category: 'Downloader',
     execute: async (sock, m, args, text) => {
         if (!text) return m.reply('Please provide a Reddit URL.');
         

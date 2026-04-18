@@ -4,7 +4,7 @@ export default {
     name: 'post',
     aliases: ['post'],
     description: 'Make a POST request to a URL. Usage: !post <url> | <body>',
-    category: 'General',
+    category: 'Tools',
     execute: async (sock, m, args, text) => {
         if (!text) return m.reply('Usage: !post <url> | <body>\nExample: !post https://api.example.com/data | {"key": "value"}');
 

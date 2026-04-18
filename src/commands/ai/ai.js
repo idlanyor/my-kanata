@@ -1,8 +1,8 @@
 import { downloadContentFromMessage } from '@whiskeysockets/baileys';
 import { settings } from '../../config/settings.js';
 import fs from 'fs';
-import path from 'path';
 import { uploadFileToGemini, generateAIResponse } from '../../lib/ai.js';
+import { makeResultPath } from '../../lib/resultPath.js';
 
 const getRandom = (ext) => {
     return `${Math.floor(Math.random() * 10000)}${ext}`;
@@ -40,7 +40,7 @@ export default {
                 }
                 
                 const ext = isImage ? '.jpg' : (isVideo ? '.mp4' : '.mp3');
-                tempPath = path.resolve(getRandom(ext));
+                tempPath = makeResultPath(getRandom(ext));
                 fs.writeFileSync(tempPath, buffer);
 
                 // Use the lib function

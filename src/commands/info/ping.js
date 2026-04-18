@@ -14,8 +14,9 @@ function clockString(ms) {
 
 export default {
     name: 'ping',
-    aliases: ['p'],
+    aliases: ['p', 'stats'],
     description: 'Check bot status and performance.',
+    category: 'Info',
     execute: async (sock, m, args) => {
         const start = performance.now();
         

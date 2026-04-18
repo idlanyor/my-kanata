@@ -4,6 +4,7 @@ export default {
     name: 'threads',
     aliases: ['threadsdl'],
     description: 'Download Threads media',
+    category: 'Downloader',
     execute: async (sock, m, args, text) => {
         if (!text) return m.reply('Please provide a Threads URL.');
         

@@ -52,7 +52,7 @@ const AuditLogs = () => {
 
   return (
     <div className="space-y-4 pb-8">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[var(--bg-card)] p-4 rounded-lg border border-[var(--border-color)] shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-(--bg-card) p-4 rounded-lg border border-(--border-color) shadow-sm">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-accent/10 text-accent rounded-lg flex items-center justify-center border border-accent/20">
             <Shield size={20} />

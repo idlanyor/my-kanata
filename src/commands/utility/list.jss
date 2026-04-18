@@ -18,8 +18,7 @@ export default {
             {
                 title: "MENU EKSPERIMENTAL",
                 rows: [
-                    { title: "Button", id: ".button", description: "Tes tombol melayang" },
-                    { title: "Event", id: ".event Syukuran", description: "Tes fitur undangan" }
+                    { title: "Button", id: ".button", description: "Tes tombol melayang" }
                 ]
             }
         ];

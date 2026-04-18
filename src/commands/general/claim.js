@@ -6,7 +6,7 @@ export default {
     name: 'claim',
     aliases: ['redeem'],
     description: 'Claim a voucher code',
-    category: 'General',
+    category: 'Finance',
     execute: async (sock, m, args, text) => {
         const code = args[0]?.toUpperCase();
         if (!code) return m.reply('Please provide a voucher code.');
