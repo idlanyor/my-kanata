@@ -1,0 +1,27 @@
+export const apps = [
+  {
+    name: 'kanata-bot',
+    cwd: '/home/roy/phopi/mybot',
+    script: './src/index.js',
+    interpreter: '/home/roy/.nvm/versions/node/v25.6.1/bin/node',
+    instances: 1,
+    exec_mode: 'fork',
+    autorestart: true,
+    watch: false,
+    max_memory_restart: '500M',
+    min_uptime: '15s',
+    restart_delay: 5000,
+    exp_backoff_restart_delay: 200,
+    kill_timeout: 5000,
+    listen_timeout: 10000,
+    time: true,
+    env: {
+      NODE_ENV: 'production',
+    },
+    log_date_format: 'YYYY-MM-DD HH:mm:ss',
+    error_file: './logs/pm2-err.log',
+    out_file: './logs/pm2-out.log',
+    combine_logs: true,
+    merge_logs: true,
+  },
+];
