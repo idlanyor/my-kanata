@@ -1,4 +1,4 @@
-import { jidNormalizedUser } from '@whiskeysockets/baileys';
+import { jidNormalizedUser } from 'baileys';
 
 export default {
     name: 'kick',
@@ -19,33 +19,57 @@ export default {
             return pid === botJid || pid === botLid;
         });
 
-        // console.log(`[DEBUG] Group Management - Chat: ${m.chat}`);
-        // console.log(`[DEBUG] Sender: ${m.sender}, isAdmin: ${userAdmin?.admin}`);
-        // console.log(`[DEBUG] Bot JID: ${botJid}, Bot LID: ${botLid}`);
-        // console.log(`[DEBUG] Bot Found in Participants: ${botAdmin ? 'Yes (' + botAdmin.id + ')' : 'No'}`);
-        // console.log(`[DEBUG] Bot Admin Status: ${botAdmin?.admin}`);
-
-        if (!botAdmin) {
-            // console.log(`[DEBUG] Participants IDs: ${participants.map(p => p.id).join(', ')}`);
-        }
-
         const isAdmin = userAdmin && (userAdmin.admin === 'admin' || userAdmin.admin === 'superadmin');
         const botIsAdmin = botAdmin && (botAdmin.admin === 'admin' || botAdmin.admin === 'superadmin');
 
         if (!isAdmin) return m.reply('This command is only for group admins.');
         if (!botIsAdmin) return m.reply('I need to be an admin to kick members.');
 
-        let users = m.msg.contextInfo ? m.msg.contextInfo.mentionedJid : [];
-        if (m.msg.contextInfo && m.msg.contextInfo.quotedMessage) {
-            users.push(m.msg.contextInfo.participant);
+        // Build unique list of targets
+        const usersSet = new Set();
+        if (m.msg.contextInfo?.mentionedJid) {
+            m.msg.contextInfo.mentionedJid.forEach(j => usersSet.add(j));
+        }
+        if (m.msg.contextInfo?.participant) {
+            usersSet.add(m.msg.contextInfo.participant);
+        }
+        if (args[0] && !args[0].includes('@')) {
+            const num = args[0].replace(/[^0-9]/g, '');
+            if (num.length >= 10) usersSet.add(`${num}@s.whatsapp.net`);
         }
 
-        if (users.length === 0) return m.reply('Please tag the user you want to kick.');
+        const users = [...usersSet];
+        if (users.length === 0) return m.reply('Please tag the user, reply to their message, or provide their number.');
+
+        const groupOwner = groupMetadata.owner || participants.find(p => p.admin === 'superadmin')?.id;
+        const kicked = [];
+        const skipped = [];
 
         for (let user of users) {
-            await sock.groupParticipantsUpdate(m.chat, [user], 'remove');
+            const normalizedUser = jidNormalizedUser(user);
+            
+            // Security Checks
+            if (normalizedUser === botJid || normalizedUser === botLid) {
+                skipped.push(`@${user.split('@')[0]} (Me)`);
+                continue;
+            }
+            if (normalizedUser === jidNormalizedUser(groupOwner)) {
+                skipped.push(`@${user.split('@')[0]} (Owner)`);
+                continue;
+            }
+
+            try {
+                await sock.groupParticipantsUpdate(m.chat, [user], 'remove');
+                kicked.push(`@${user.split('@')[0]}`);
+            } catch (err) {
+                skipped.push(`@${user.split('@')[0]} (Failed)`);
+            }
         }
         
-        await m.reply(' Success');
+        let response = '';
+        if (kicked.length > 0) response += `✅ Berhasil mengeluarkan: ${kicked.join(', ')}\n`;
+        if (skipped.length > 0) response += `❌ Lewati: ${skipped.join(', ')}`;
+        
+        await m.reply(response.trim() || 'Tidak ada tindakan yang dilakukan.', { mentions: users });
     }
 };

@@ -1,4 +1,4 @@
-import { jidNormalizedUser } from '@whiskeysockets/baileys';
+import { jidNormalizedUser } from 'baileys';
 import logger from '../../lib/logger.js';
 
 export default {
@@ -40,9 +40,20 @@ export default {
 
         if (!target) return m.reply(' Please tag a user or reply to their message to demote.');
 
+        const normalizedTarget = jidNormalizedUser(target);
+        const groupOwner = groupMetadata.owner || participants.find(p => p.admin === 'superadmin')?.id;
+
+        if (normalizedTarget === botJid || normalizedTarget === botLid) {
+            return m.reply(' I cannot demote myself!');
+        }
+
+        if (normalizedTarget === jidNormalizedUser(groupOwner)) {
+            return m.reply(' I cannot demote the group owner!');
+        }
+
         try {
             await sock.groupParticipantsUpdate(m.chat, [target], 'demote');
-            await m.reply(` Successfully demoted @${target.split('@')[0]} to member.`, null, { mentions: [target] });
+            await m.reply(` Successfully demoted @${target.split('@')[0]} to member.`, { mentions: [target] });
         } catch (err) {
             logger.error(err, 'Error in demote command');
             await m.reply(' Failed to demote user.');

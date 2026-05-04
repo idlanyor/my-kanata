@@ -1,4 +1,4 @@
-import { jidNormalizedUser } from '@whiskeysockets/baileys';
+import { jidNormalizedUser } from 'baileys';
 
 export default {
     name: 'group',

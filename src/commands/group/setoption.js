@@ -1,4 +1,4 @@
-import { jidNormalizedUser } from '@whiskeysockets/baileys';
+import { jidNormalizedUser } from 'baileys';
 import Group from '../../database/models/Group.js';
 import { clearSettingsCache } from '../../handlers/messageHandler.js';
 

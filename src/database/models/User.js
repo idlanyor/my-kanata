@@ -6,6 +6,10 @@ const userSchema = new mongoose.Schema({
         required: true,
         unique: true
     },
+    phoneNumber: {
+        type: String,
+        default: ''
+    },
     name: {
         type: String,
         default: ''
@@ -22,6 +26,10 @@ const userSchema = new mongoose.Schema({
     emailCloud: {
         type: String,
         default: ''
+    },
+    webPassword: {
+        type: String,
+        default: null
     },
     createdAt: {
         type: Date,

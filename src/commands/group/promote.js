@@ -1,4 +1,4 @@
-import { jidNormalizedUser } from '@whiskeysockets/baileys';
+import { jidNormalizedUser } from 'baileys';
 import logger from '../../lib/logger.js';
 
 export default {
@@ -42,7 +42,7 @@ export default {
 
         try {
             await sock.groupParticipantsUpdate(m.chat, [target], 'promote');
-            await m.reply(` Successfully promoted @${target.split('@')[0]} to admin.`, null, { mentions: [target] });
+            await m.reply(` Successfully promoted @${target.split('@')[0]} to admin.`, { mentions: [target] });
         } catch (err) {
             logger.error(err, 'Error in promote command');
             await m.reply(' Failed to promote user. Make sure the user is still in the group.');

@@ -1,8 +1,5 @@
-import { generateWAMessageContent, generateWAMessageFromContent } from '@whiskeysockets/baileys';
-import crypto from 'node:crypto';
 import { PassThrough } from 'node:stream';
 import ffmpeg from 'fluent-ffmpeg';
-import { settings } from '../../config/settings.js';
 
 export default {
     name: 'groupstatus',
@@ -42,10 +39,8 @@ export default {
                 const buffer = await quoted.download();
                 await m.reply('Processing audio status...');
                 const audioVn = await toVN(buffer);
-                const audioWaveform = await generateWaveform(buffer);
                 content = {
                     audio: audioVn,
-                    waveform: audioWaveform,
                     mimetype: "audio/ogg; codecs=opus",
                     ptt: true
                 };
@@ -69,30 +64,10 @@ export default {
             if (!content) return m.reply('⚠️ Reply media atau kirim teks!');
 
             await m.reply('🚀 Uploading status...');
-            
-            // 1. Generate core content
-            const backgroundColor = content.backgroundColor;
-            if (backgroundColor) delete content.backgroundColor;
 
-            const inside = await generateWAMessageContent(content, {
-                upload: sock.waUploadToServer,
-                backgroundColor
+            await sock.sendMessage(id, {
+                groupStatusMessage: content
             });
-
-            // 2. Prepare message with Message Secret (Crucial for Media)
-            const messageSecret = crypto.randomBytes(32);
-            const msg = generateWAMessageFromContent(id, {
-                messageContextInfo: { messageSecret },
-                groupStatusMessageV2: {
-                    message: {
-                        ...inside,
-                        messageContextInfo: { messageSecret }
-                    }
-                }
-            }, {});
-
-            // 3. Send via Relay
-            await sock.relayMessage(id, msg.message, { messageId: msg.key.id });
             
             await m.reply('✅ Dah UpStatus Nya Tengok Di Grup');
 
@@ -124,38 +99,5 @@ async function toVN(inputBuffer) {
             .on('end', () => resolve(Buffer.concat(chunks)))
             .pipe(outStream, { end: true });
         outStream.on('data', c => chunks.push(c));
-    });
-}
-
-async function generateWaveform(inputBuffer, bars = 64) {
-    return new Promise((resolve, reject) => {
-        const inputStream = new PassThrough();
-        inputStream.end(inputBuffer);
-        const chunks = [];
-        ffmpeg(inputStream)
-            .audioChannels(1)
-            .audioFrequency(16000)
-            .format("s16le")
-            .on("error", reject)
-            .on("end", () => {
-                const rawData = Buffer.concat(chunks);
-                const samples = rawData.length / 2;
-                const amplitudes = [];
-                for (let i = 0; i < samples; i++) {
-                    let val = rawData.readInt16LE(i * 2);
-                    amplitudes.push(Math.abs(val) / 32768);
-                }
-                let blockSize = Math.floor(amplitudes.length / bars);
-                let avg = [];
-                for (let i = 0; i < bars; i++) {
-                    let block = amplitudes.slice(i * blockSize, (i + 1) * blockSize);
-                    avg.push(block.length > 0 ? block.reduce((a, b) => a + b, 0) / block.length : 0);
-                }
-                let max = Math.max(...avg) || 1;
-                let normalized = avg.map(v => Math.floor((v / max) * 100));
-                resolve(Buffer.from(new Uint8Array(normalized)).toString("base64"));
-            })
-            .pipe(new PassThrough()) 
-            .on("data", chunk => chunks.push(chunk));
     });
 }

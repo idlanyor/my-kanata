@@ -1,14 +1,26 @@
 import axios from 'axios';
+import { getCachedSettings } from '../handlers/messageFlow.js';
 
-const CF_API_URL = `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/firewall/access_rules/rules`;
+const getHeaders = async () => {
+    const settings = await getCachedSettings();
+    const token = settings.cfToken || process.env.CLOUDFLARE_API_TOKEN;
+    return {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+    };
+};
 
-const headers = {
-    'Authorization': `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
-    'Content-Type': 'application/json'
+const getAccountId = async () => {
+    const settings = await getCachedSettings();
+    return settings.cfAccountId || process.env.CLOUDFLARE_ACCOUNT_ID;
 };
 
 export const listRules = async (mode = null, page = 1) => {
     try {
+        const headers = await getHeaders();
+        const accountId = await getAccountId();
+        const CF_API_URL = `https://api.cloudflare.com/client/v4/accounts/${accountId}/firewall/access_rules/rules`;
+
         const params = {
             page: page,
             per_page: 50
@@ -25,6 +37,10 @@ export const listRules = async (mode = null, page = 1) => {
 
 export const createRule = async (ip, mode, notes) => {
     try {
+        const headers = await getHeaders();
+        const accountId = await getAccountId();
+        const CF_API_URL = `https://api.cloudflare.com/client/v4/accounts/${accountId}/firewall/access_rules/rules`;
+
         const data = {
             mode: mode, // 'block', 'whitelist', 'challenge', 'js_challenge'
             configuration: {
@@ -44,6 +60,10 @@ export const createRule = async (ip, mode, notes) => {
 
 export const deleteRule = async (ip) => {
     try {
+        const headers = await getHeaders();
+        const accountId = await getAccountId();
+        const CF_API_URL = `https://api.cloudflare.com/client/v4/accounts/${accountId}/firewall/access_rules/rules`;
+
         // 1. Find the rule ID first by searching the IP
         const searchResponse = await axios.get(CF_API_URL, {
             headers,
@@ -70,6 +90,16 @@ export const deleteRule = async (ip) => {
 
 export const getZoneId = async (domainName) => {
     try {
+        const settings = await getCachedSettings();
+        
+        // 1. Check in database first
+        if (settings.cfZones && settings.cfZones.length > 0) {
+            const found = settings.cfZones.find(z => z.domain === domainName?.toLowerCase());
+            if (found) return found.zoneId;
+        }
+
+        // 2. If not found in DB, try to fetch from Cloudflare API
+        const headers = await getHeaders();
         const response = await axios.get('https://api.cloudflare.com/client/v4/zones', {
             headers,
             params: { name: domainName }
@@ -84,6 +114,7 @@ export const getZoneId = async (domainName) => {
 
 export const addDnsRecord = async (zoneId, type, name, content, proxied = false) => {
     try {
+        const headers = await getHeaders();
         const url = `https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`;
         const data = {
             type: type, // A, CNAME, etc
@@ -103,6 +134,7 @@ export const addDnsRecord = async (zoneId, type, name, content, proxied = false)
 
 export const listDnsRecords = async (zoneId, page = 1) => {
     try {
+        const headers = await getHeaders();
         const url = `https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`;
         const response = await axios.get(url, {
             headers,
@@ -111,6 +143,25 @@ export const listDnsRecords = async (zoneId, page = 1) => {
         return response.data.result;
     } catch (error) {
         console.error('CF ListDNS Error:', error.response?.data || error.message);
+        throw error;
+    }
+};
+
+export const fetchAllZones = async (page = 1) => {
+    try {
+        const headers = await getHeaders();
+        const accountId = await getAccountId();
+        const response = await axios.get('https://api.cloudflare.com/client/v4/zones', {
+            headers,
+            params: { 
+                'account.id': accountId,
+                page: page, 
+                per_page: 50 
+            }
+        });
+        return response.data.result;
+    } catch (error) {
+        console.error('CF FetchZones Error:', error.response?.data || error.message);
         throw error;
     }
 };

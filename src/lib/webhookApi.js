@@ -1,13 +1,36 @@
 import http from 'http';
+import { Server } from 'socket.io';
 import crypto from 'crypto';
+import url from 'url';
 import logger from './logger.js';
+import * as financeService from './financeService.js';
+import { jadibotService } from './jadibotService.js';
+import User from '../database/models/User.js';
+import bcrypt from 'bcrypt';
+import { settings } from '../config/settings.js';
+import * as cloudflare from './cloudflare.js';
+import { getCachedSettings } from '../handlers/messageFlow.js';
+import { decodeJid } from './serialize.js';
 
 const DEFAULT_PORT = 8787;
-const MAX_BODY_BYTES = 256 * 1024;
+const MAX_BODY_BYTES = 1 * 1024 * 1024; // Increased to 1MB for image/audio data
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX = 60;
 
 const rateStore = new Map();
+
+const isOwner = async (jid) => {
+    if (!jid) return false;
+    const botSettings = await getCachedSettings();
+    const ownerJid = decodeJid(settings.ownerNumber);
+    const ownerLid = settings.ownerLid ? decodeJid(settings.ownerLid) : null;
+    
+    const staticOwners = [ownerJid, ownerLid].filter(Boolean);
+    const dbOwners = (botSettings.owners || []).map(o => decodeJid(o));
+    
+    const normalizedJid = decodeJid(jid);
+    return [...staticOwners, ...dbOwners].includes(normalizedJid);
+};
 
 const readJsonBody = (req) => new Promise((resolve, reject) => {
     let body = '';
@@ -99,17 +122,14 @@ export const startWebhookApi = ({ getSocket }) => {
     }
 
     const server = http.createServer(async (req, res) => {
-        const url = req.url || '/';
+        const parsedUrl = url.parse(req.url || '/', true);
+        const pathname = parsedUrl.pathname;
         const method = req.method || 'GET';
 
-        if (method === 'GET' && url === '/health') {
-            return respond(res, 200, { ok: true, service: 'webhook-api' });
-        }
+        logger.info(`Webhook Request: ${method} ${pathname}`, 'WEBHOOK');
 
-        const isSendText = method === 'POST' && url === '/api/webhook/send-text';
-        const isSendDocument = method === 'POST' && url === '/api/webhook/send-document';
-        if (!isSendText && !isSendDocument) {
-            return respond(res, 404, { ok: false, error: 'Not found' });
+        if (method === 'GET' && pathname === '/health') {
+            return respond(res, 200, { ok: true, service: 'webhook-api' });
         }
 
         const ip = getClientIp(req);
@@ -128,50 +148,346 @@ export const startWebhookApi = ({ getSocket }) => {
         }
 
         try {
-            const body = await readJsonBody(req);
-            const sock = getSocket();
-            if (!sock) {
-                return respond(res, 503, { ok: false, error: 'Bot socket unavailable' });
-            }
+            // Authentication Endpoint
+            if (pathname === '/api/webhook/auth/login' && method === 'POST') {
+                const body = await readJsonBody(req);
+                const { username, password } = body;
+                if (!username || !password) return respond(res, 400, { ok: false, error: 'Username and password are required' });
 
-            const to = normalizeJid(body.to);
-            if (!to) {
-                return respond(res, 400, { ok: false, error: 'Invalid payload. Required: to' });
-            }
+                // Bersihkan username dari karakter non-digit
+                const cleanNumber = username.replace(/\D/g, '');
+                
+                // Cari user di database berdasarkan JID atau phoneNumber
+                const user = await User.findOne({ 
+                    $or: [
+                        { jid: { $regex: new RegExp(`^${cleanNumber}(:|@)`) } },
+                        { phoneNumber: cleanNumber }
+                    ]
+                });
 
-            let result;
-            if (isSendText) {
-                const text = typeof body.text === 'string' ? body.text.trim() : '';
-                if (!text) {
-                    return respond(res, 400, { ok: false, error: 'Invalid payload. Required: text' });
-                }
-                result = await sock.sendMessage(to, { text });
-            } else {
-                const documentBuffer = decodeBase64Data(body.data);
-                const fileName = typeof body.fileName === 'string' && body.fileName.trim() ? body.fileName.trim() : 'document.pdf';
-                const mimetype = typeof body.mimetype === 'string' && body.mimetype.trim() ? body.mimetype.trim() : 'application/pdf';
-                const caption = typeof body.caption === 'string' ? body.caption : '';
-
-                if (!documentBuffer || documentBuffer.length === 0) {
-                    return respond(res, 400, { ok: false, error: 'Invalid payload. Required: base64 data' });
+                if (!user || !user.webPassword) {
+                    return respond(res, 401, { ok: false, error: 'Invalid credentials or web access not enabled' });
                 }
 
-                result = await sock.sendMessage(to, {
-                    document: documentBuffer,
-                    mimetype,
-                    fileName,
-                    caption
+                const match = await bcrypt.compare(password, user.webPassword);
+                if (!match) {
+                    return respond(res, 401, { ok: false, error: 'Invalid credentials' });
+                }
+
+                return respond(res, 200, { 
+                    ok: true, 
+                    data: { 
+                        userId: user.jid, 
+                        username: user.name || username,
+                        whatsappNumber: user.jid.split('@')[0],
+                        isOwner: await isOwner(user.jid)
+                    } 
                 });
             }
 
-            return respond(res, 200, {
-                ok: true,
-                data: { to, messageId: result?.key?.id || null }
-            });
+            // Cloudflare API Endpoints
+            if (pathname.startsWith('/api/webhook/cloudflare/')) {
+                let body = {};
+                if (method !== 'GET') {
+                    body = await readJsonBody(req);
+                }
+                
+                const userId = method === 'GET' ? parsedUrl.query.userId : body.userId;
+                if (!userId || !await isOwner(userId)) {
+                    return respond(res, 403, { ok: false, error: 'Forbidden: Only owner can access Cloudflare features' });
+                }
+
+                if (pathname === '/api/webhook/cloudflare/zones' && method === 'GET') {
+                    const zones = await cloudflare.fetchAllZones(parsedUrl.query.page || 1);
+                    return respond(res, 200, { ok: true, data: zones });
+                }
+
+                if (pathname === '/api/webhook/cloudflare/dns' && method === 'GET') {
+                    const { zoneId, page } = parsedUrl.query;
+                    if (!zoneId) return respond(res, 400, { ok: false, error: 'zoneId is required' });
+                    const records = await cloudflare.listDnsRecords(zoneId, page || 1);
+                    return respond(res, 200, { ok: true, data: records });
+                }
+
+                if (pathname === '/api/webhook/cloudflare/dns' && method === 'POST') {
+                    const { zoneId, type, name, content, proxied } = body;
+                    if (!zoneId || !type || !name || !content) return respond(res, 400, { ok: false, error: 'Missing required fields' });
+                    const result = await cloudflare.addDnsRecord(zoneId, type, name, content, !!proxied);
+                    return respond(res, 200, { ok: true, data: result });
+                }
+
+                if (pathname === '/api/webhook/cloudflare/rules' && method === 'GET') {
+                    const { mode, page } = parsedUrl.query;
+                    const rules = await cloudflare.listRules(mode, page || 1);
+                    return respond(res, 200, { ok: true, data: rules });
+                }
+
+                if (pathname === '/api/webhook/cloudflare/rules' && method === 'POST') {
+                    const { ip, mode, notes } = body;
+                    if (!ip || !mode) return respond(res, 400, { ok: false, error: 'ip and mode are required' });
+                    const result = await cloudflare.createRule(ip, mode, notes);
+                    return respond(res, 200, { ok: true, data: result });
+                }
+
+                if (pathname === '/api/webhook/cloudflare/rules' && method === 'DELETE') {
+                    const { ip } = body;
+                    if (!ip) return respond(res, 400, { ok: false, error: 'ip is required' });
+                    const result = await cloudflare.deleteRule(ip);
+                    return respond(res, 200, { ok: !!result, data: result });
+                }
+            }
+
+            // User Management Endpoints
+            if (pathname.startsWith('/api/webhook/users')) {
+                const userId = method === 'GET' ? parsedUrl.query.userId : (await readJsonBody(req)).userId;
+                if (!userId || !await isOwner(userId)) {
+                    return respond(res, 403, { ok: false, error: 'Forbidden: Only owner can access User Management' });
+                }
+
+                if (pathname === '/api/webhook/users/list' && method === 'GET') {
+                    const page = parseInt(parsedUrl.query.page) || 1;
+                    const limit = parseInt(parsedUrl.query.limit) || 20;
+                    const search = parsedUrl.query.search || '';
+                    
+                    const query = search ? { 
+                        $or: [
+                            { jid: { $regex: search, $options: 'i' } },
+                            { name: { $regex: search, $options: 'i' } },
+                            { phoneNumber: { $regex: search, $options: 'i' } }
+                        ] 
+                    } : {};
+
+                    const users = await User.find(query)
+                        .limit(limit)
+                        .skip((page - 1) * limit)
+                        .sort({ createdAt: -1 });
+                    
+                    const total = await User.countDocuments(query);
+                    
+                    return respond(res, 200, { 
+                        ok: true, 
+                        data: { 
+                            users, 
+                            total, 
+                            page, 
+                            totalPages: Math.ceil(total / limit) 
+                        } 
+                    });
+                }
+
+                if (pathname === '/api/webhook/users/update' && method === 'POST') {
+                    const body = await readJsonBody(req);
+                    const { targetJid, balance, role, name, emailCloud, phoneNumber } = body;
+                    if (!targetJid) return respond(res, 400, { ok: false, error: 'targetJid is required' });
+
+                    const updateData = {};
+                    if (balance !== undefined) updateData.balance = parseInt(balance);
+                    if (role) updateData.role = role;
+                    if (name) updateData.name = name;
+                    if (emailCloud !== undefined) updateData.emailCloud = emailCloud;
+                    if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
+
+                    const user = await User.findOneAndUpdate({ jid: targetJid }, updateData, { new: true, upsert: true });
+                    return respond(res, 200, { ok: true, data: user });
+                }
+            }
+
+            // Bot Settings Endpoints
+            if (pathname.startsWith('/api/webhook/settings')) {
+                const userId = method === 'GET' ? parsedUrl.query.userId : (await readJsonBody(req)).userId;
+                if (!userId || !await isOwner(userId)) {
+                    return respond(res, 403, { ok: false, error: 'Forbidden: Only owner can access Bot Settings' });
+                }
+
+                if (pathname === '/api/webhook/settings' && method === 'GET') {
+                    const botSettings = await getCachedSettings();
+                    return respond(res, 200, { ok: true, data: botSettings });
+                }
+
+                if (pathname === '/api/webhook/settings/update' && method === 'POST') {
+                    const body = await readJsonBody(req);
+                    const updateableFields = [
+                        'mode', 'autoStatusRead', 'autoAiPrivate', 'mustJoinGroup', 
+                        'groupInviteLink', 'privateAiPersona'
+                    ];
+                    
+                    const updateData = {};
+                    updateableFields.forEach(field => {
+                        if (body[field] !== undefined) {
+                            updateData[field] = body[field];
+                        }
+                    });
+
+                    if (Object.keys(updateData).length === 0) {
+                        return respond(res, 400, { ok: false, error: 'No valid fields to update' });
+                    }
+
+                    const updated = await Settings.findOneAndUpdate(
+                        { id: 'bot_settings' },
+                        updateData,
+                        { new: true, upsert: true }
+                    );
+                    
+                    const { clearSettingsCache } = await import('../handlers/messageHandler.js');
+                    clearSettingsCache();
+                    
+                    return respond(res, 200, { ok: true, data: updated });
+                }
+            }
+
+            // WhatsApp Messaging Endpoints
+            if (method === 'POST' && (pathname === '/api/webhook/send-text' || pathname === '/api/webhook/send-document')) {
+                const body = await readJsonBody(req);
+                const sock = getSocket();
+                if (!sock) return respond(res, 503, { ok: false, error: 'Bot socket unavailable' });
+
+                const to = normalizeJid(body.to);
+                if (!to) return respond(res, 400, { ok: false, error: 'Invalid payload. Required: to' });
+
+                let result;
+                if (pathname === '/api/webhook/send-text') {
+                    const text = typeof body.text === 'string' ? body.text.trim() : '';
+                    if (!text) return respond(res, 400, { ok: false, error: 'Invalid payload. Required: text' });
+                    result = await sock.sendMessage(to, { text });
+                } else {
+                    const documentBuffer = decodeBase64Data(body.data);
+                    if (!documentBuffer) return respond(res, 400, { ok: false, error: 'Invalid payload. Required: base64 data' });
+                    result = await sock.sendMessage(to, {
+                        document: documentBuffer,
+                        mimetype: body.mimetype || 'application/pdf',
+                        fileName: body.fileName || 'document.pdf',
+                        caption: body.caption || ''
+                    });
+                }
+                return respond(res, 200, { ok: true, data: { to, messageId: result?.key?.id } });
+            }
+
+            // Finance API Endpoints
+            if (pathname === '/api/webhook/finance/report' && method === 'GET') {
+                const { userId, month, year, type, category, startDate, endDate } = parsedUrl.query;
+                if (!userId) return respond(res, 400, { ok: false, error: 'userId is required' });
+                
+                const report = await financeService.getMonthlyReport(
+                    userId, 
+                    month ? parseInt(month) - 1 : undefined, 
+                    year ? parseInt(year) : undefined,
+                    { type, category, startDate, endDate }
+                );
+                return respond(res, 200, { ok: true, data: report });
+            }
+
+            if (pathname === '/api/webhook/finance/catat' && method === 'POST') {
+                const body = await readJsonBody(req);
+                const { userId, userName, text, fileBase64, mimeType } = body;
+                if (!userId) return respond(res, 400, { ok: false, error: 'userId is required' });
+
+                let result;
+                if (text || fileBase64) {
+                    const fileData = fileBase64 ? { buffer: decodeBase64Data(fileBase64), mimeType: mimeType || 'image/jpeg' } : null;
+                    result = await financeService.processAiTransaction(userId, userName || 'Web User', text, fileData);
+                } else {
+                    const { type, amount, category, description, date, kakeiboCategory } = body;
+                    if (!type || !amount) return respond(res, 400, { ok: false, error: 'type and amount are required' });
+                    const tx = await financeService.addTransaction({ userId, userName: userName || 'Web User', type, amount, category, description, date, kakeiboCategory });
+                    result = { success: true, transactions: [tx] };
+                }
+                return respond(res, 200, { ok: true, data: result });
+            }
+
+            if (pathname === '/api/webhook/finance/delete' && method === 'DELETE') {
+                const body = await readJsonBody(req);
+                const { userId, transactionId } = body;
+                if (!userId) return respond(res, 400, { ok: false, error: 'userId is required' });
+                const deleted = await financeService.deleteTransaction(userId, transactionId);
+                return respond(res, 200, { ok: true, deleted: !!deleted, data: deleted });
+            }
+
+            if (pathname === '/api/webhook/finance/update' && method === 'POST') {
+                const body = await readJsonBody(req);
+                const { userId, transactionId, type, amount, category, description, date, kakeiboCategory } = body;
+                if (!userId || !transactionId) return respond(res, 400, { ok: false, error: 'userId and transactionId are required' });
+                
+                const updateData = {};
+                if (type) updateData.type = type;
+                if (amount) updateData.amount = amount;
+                if (category) updateData.category = category;
+                if (description) updateData.description = description;
+                if (kakeiboCategory !== undefined) updateData.kakeiboCategory = kakeiboCategory;
+                if (date) updateData.date = new Date(date);
+
+                const updated = await financeService.updateTransaction(userId, transactionId, updateData);
+                return respond(res, 200, { ok: !!updated, data: updated });
+            }
+
+            if (pathname === '/api/webhook/finance/detail' && method === 'GET') {
+                const { userId, transactionId } = parsedUrl.query;
+                if (!userId || !transactionId) return respond(res, 400, { ok: false, error: 'userId and transactionId are required' });
+                
+                const transaction = await financeService.Transaction.findOne({ _id: transactionId, userId });
+                return respond(res, 200, { ok: !!transaction, data: transaction });
+            }
+
+            if (pathname === '/api/webhook/finance/kakeibo' && method === 'GET') {
+                const { userId, month, year } = parsedUrl.query;
+                if (!userId) return respond(res, 400, { ok: false, error: 'userId is required' });
+                const data = await financeService.getKakeiboReport(
+                    userId, 
+                    month ? parseInt(month) - 1 : undefined, 
+                    year ? parseInt(year) : undefined
+                );
+                return respond(res, 200, { ok: true, data });
+            }
+
+            if (pathname === '/api/webhook/finance/budget' && method === 'POST') {
+                const body = await readJsonBody(req);
+                const { userId, month, year, incomeTarget, savingsTarget } = body;
+                if (!userId || !month || !year) return respond(res, 400, { ok: false, error: 'userId, month, and year are required' });
+                
+                const budget = await financeService.setBudget(userId, month, year, { incomeTarget, savingsTarget });
+                return respond(res, 200, { ok: true, data: budget });
+            }
+
+            // Jadibot API Endpoints
+            if (pathname === '/api/webhook/jadibot/start' && method === 'POST') {
+                const body = await readJsonBody(req);
+                const { phoneNumber } = body;
+                if (!phoneNumber) return respond(res, 400, { ok: false, error: 'phoneNumber is required' });
+                const result = await jadibotService.startSession(phoneNumber);
+                return respond(res, 200, { ok: true, data: result });
+            }
+
+            if (pathname === '/api/webhook/jadibot/sessions' && method === 'GET') {
+                const sessions = jadibotService.listSessions();
+                return respond(res, 200, { ok: true, data: sessions });
+            }
+
+            if (pathname === '/api/webhook/jadibot/stop' && method === 'POST') {
+                const body = await readJsonBody(req);
+                const { phoneNumber } = body;
+                if (!phoneNumber) return respond(res, 400, { ok: false, error: 'phoneNumber is required' });
+                const result = await jadibotService.stopSession(phoneNumber);
+                return respond(res, 200, { ok: result.success, data: result });
+            }
+
+            return respond(res, 404, { ok: false, error: 'Not found' });
         } catch (err) {
+            logger.error(`Webhook API error: ${err.message}`, 'WEBHOOK');
             const status = err.message === 'Payload too large' || err.message === 'Invalid JSON body' ? 400 : 500;
-            return respond(res, status, { ok: false, error: err.message || 'Failed to send message' });
+            return respond(res, status, { ok: false, error: err.message || 'Internal server error' });
         }
+    });
+
+    const io = new Server(server, {
+        cors: {
+            origin: "*",
+            methods: ["GET", "POST"]
+        }
+    });
+
+    jadibotService.setIo(io);
+
+    io.on('connection', (socket) => {
+        logger.debug('Dashboard client connected via WebSocket', 'WEBHOOK');
     });
 
     server.listen(port, () => {

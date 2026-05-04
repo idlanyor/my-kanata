@@ -1,63 +1,49 @@
-import { downloadContentFromMessage } from '@whiskeysockets/baileys';
+import { promisify } from 'util';
 import { exec } from 'child_process';
 import fs from 'fs';
 import { makeResultPath } from '../../lib/resultPath.js';
 
-const getRandom = (ext) => {
-    return `${Math.floor(Math.random() * 10000)}${ext}`;
-};
+const execPromise = promisify(exec);
 
 export default {
     name: 'tovn',
     aliases: ['tovoicenote', 'mp3tovn'],
-    description: 'Convert Audio/Video to Voice Note (VN) with Spectrum',
+    description: 'Convert Audio/Video to Voice Note (VN)',
     category: 'Tools',
     execute: async (sock, m, args) => {
         const quoted = m.quoted ? m.quoted : m;
-        const mime = quoted.mtype || '';
-        const isAudio = quoted.mtype === 'audioMessage';
-        const isVideo = quoted.mtype === 'videoMessage';
+        const mime = quoted.msg?.mimetype || '';
+        const isAudio = quoted.mtype === 'audioMessage' || mime.includes('audio');
+        const isVideo = quoted.mtype === 'videoMessage' || mime.includes('video');
 
         if (!isAudio && !isVideo) {
             return m.reply(' Reply audio atau video yang ingin dijadikan Voice Note (VN).');
         }
 
-        await m.reply(' Converting to VN...');
+        await m.reply('⏳ Sedang memproses ke VN...');
 
         try {
-            const mediaType = isAudio ? 'audio' : 'video';
-            const stream = await downloadContentFromMessage(quoted.msg, mediaType);
-            let buffer = Buffer.from([]);
-            for await (const chunk of stream) {
-                buffer = Buffer.concat([buffer, chunk]);
-            }
+            const buffer = await quoted.download();
+            if (!buffer) return m.reply('❌ Gagal mengunduh media.');
 
-            const fileName = getRandom(isAudio ? '.mp3' : '.mp4');
-            const outputFileName = getRandom('.opus');
-            const filePath = makeResultPath(fileName);
+            const inputFileName = `input_${Date.now()}` + (isAudio ? '.mp3' : '.mp4');
+            const outputFileName = `output_${Date.now()}.opus`;
+            const inputFilePath = makeResultPath(inputFileName);
             const outputFilePath = makeResultPath(outputFileName);
 
-            fs.writeFileSync(filePath, buffer);
+            await fs.promises.writeFile(inputFilePath, buffer);
 
             // Convert to OPUS for WhatsApp Voice Note
-            exec(`ffmpeg -i ${filePath} -vn -c:a libopus -b:a 128k -vbr on -compression_level 10 ${outputFilePath}`, async (err) => {
-                fs.unlinkSync(filePath); // Delete input file
+            await execPromise(`ffmpeg -i "${inputFilePath}" -vn -c:a libopus -b:a 128k -vbr on -compression_level 10 "${outputFilePath}"`);
 
-                if (err) {
-                    console.error('FFmpeg Error:', err);
-                    return m.reply(' Gagal mengonversi ke VN.');
-                }
+            if (fs.existsSync(outputFilePath)) {
+                const audioBuffer = await fs.promises.readFile(outputFilePath);
 
-                const audioBuffer = fs.readFileSync(outputFilePath);
-
-                // Generate Rhythmic Waveform (Simulated Sine Wave + Noise)
-                // This looks more natural than pure random
+                // Generate Rhythmic Waveform
                 const waveLength = 70;
                 const waveform = new Uint8Array(waveLength);
                 for (let i = 0; i < waveLength; i++) {
-                    // Create a "pulse" effect using sine
                     const pulse = Math.sin(i / 2) * 60 + 120;
-                    // Add micro-noise
                     const noise = Math.random() * 40;
                     waveform[i] = Math.min(255, pulse + noise);
                 }
@@ -79,12 +65,16 @@ export default {
                     }
                 }, { quoted: m });
 
-                fs.unlinkSync(outputFilePath); // Delete output file
-            });
+                // Cleanup
+                await fs.promises.unlink(inputFilePath).catch(() => {});
+                await fs.promises.unlink(outputFilePath).catch(() => {});
+            } else {
+                throw new Error('Output file not generated');
+            }
 
         } catch (error) {
             console.error('ToVN Error:', error);
-            m.reply(' Terjadi kesalahan saat memproses media.');
+            m.reply(`❌ Gagal mengonversi ke VN: ${error.message}`);
         }
     }
 };

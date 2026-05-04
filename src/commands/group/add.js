@@ -1,4 +1,4 @@
-import { jidNormalizedUser } from '@whiskeysockets/baileys';
+import { jidNormalizedUser } from 'baileys';
 
 export default {
     name: 'add',
@@ -30,7 +30,10 @@ export default {
 
         const addNumberAsJid = (raw) => {
             if (!raw) return;
-            const num = String(raw).replace(/[^0-9]/g, '');
+            let num = String(raw).replace(/[^0-9]/g, '');
+            if (num.startsWith('0')) {
+                num = '62' + num.slice(1);
+            }
             if (num.length >= 10) users.add(`${num}@s.whatsapp.net`);
         };
 

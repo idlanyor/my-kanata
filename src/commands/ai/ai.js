@@ -1,4 +1,4 @@
-import { downloadContentFromMessage } from '@whiskeysockets/baileys';
+import { downloadContentFromMessage } from 'baileys';
 import { settings } from '../../config/settings.js';
 import fs from 'fs';
 import { uploadFileToGemini, generateAIResponse } from '../../lib/ai.js';

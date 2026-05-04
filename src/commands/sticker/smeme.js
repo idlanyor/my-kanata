@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { downloadContentFromMessage } from '@whiskeysockets/baileys';
+import { downloadContentFromMessage } from 'baileys';
 import { Sticker, StickerTypes } from 'wa-sticker-formatter';
 import { settings } from '../../config/settings.js';
 import { uploadBufferToKanata } from '../../lib/mediaUpload.js';

@@ -37,6 +37,22 @@ const settingSchema = new mongoose.Schema({
     groupInviteLink: {
         type: String,
         default: 'https://chat.whatsapp.com/I5JCuQnIo4f79JsZAGCvDD'
+    },
+    cfToken: {
+        type: String,
+        default: ''
+    },
+    cfAccountId: {
+        type: String,
+        default: ''
+    },
+    cfZones: [{
+        domain: String,
+        zoneId: String
+    }],
+    owners: {
+        type: [String],
+        default: []
     }
 });
 

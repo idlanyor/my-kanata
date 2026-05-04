@@ -1,64 +1,63 @@
-import { downloadContentFromMessage } from '@whiskeysockets/baileys';
+import { promisify } from 'util';
 import { exec } from 'child_process';
 import fs from 'fs';
 import { makeResultPath } from '../../lib/resultPath.js';
 
-const getRandom = (ext) => {
-    return `${Math.floor(Math.random() * 10000)}${ext}`;
-};
+const execPromise = promisify(exec);
 
 export default {
     name: 'tomp3',
     aliases: ['tomp3audio', 'extractaudio'],
-    description: 'Convert Video to MP3 Audio',
+    description: 'Convert Video/Audio to MP3',
     category: 'Tools',
     execute: async (sock, m, args) => {
         const quoted = m.quoted ? m.quoted : m;
-        const isVideo = quoted.mtype === 'videoMessage';
+        const mime = quoted.msg?.mimetype || '';
+        const isVideo = quoted.mtype === 'videoMessage' || mime.includes('video');
+        const isAudio = quoted.mtype === 'audioMessage' || mime.includes('audio');
 
-        if (!isVideo) {
-            return m.reply(' Reply video yang ingin dijadikan MP3.');
+        if (!isVideo && !isAudio) {
+            return m.reply(' Reply video atau audio yang ingin dijadikan MP3.');
         }
 
-        await m.reply(' Extracting audio to MP3...');
+        await m.reply('⏳ Sedang memproses ke MP3...');
 
         try {
-            const stream = await downloadContentFromMessage(quoted.msg, 'video');
-            let buffer = Buffer.from([]);
-            for await (const chunk of stream) {
-                buffer = Buffer.concat([buffer, chunk]);
-            }
+            const buffer = await quoted.download();
+            if (!buffer) return m.reply('❌ Gagal mengunduh media.');
 
-            const inputFileName = getRandom('.mp4');
-            const outputFileName = getRandom('.mp3');
+            const inputFileName = `input_${Date.now()}_${Math.floor(Math.random() * 1000)}` + (isVideo ? '.mp4' : '.ogg');
+            const outputFileName = `output_${Date.now()}_${Math.floor(Math.random() * 1000)}.mp3`;
             const inputFilePath = makeResultPath(inputFileName);
             const outputFilePath = makeResultPath(outputFileName);
 
-            fs.writeFileSync(inputFilePath, buffer);
+            await fs.promises.writeFile(inputFilePath, buffer);
 
-            // Convert Video to MP3 using FFmpeg
-            exec(`ffmpeg -i ${inputFilePath} -vn -acodec libmp3lame -ab 128k ${outputFilePath}`, async (err) => {
-                fs.unlinkSync(inputFilePath);
+            // Convert using FFmpeg
+            // -vn: no video
+            // -acodec libmp3lame: mp3 codec
+            // -q:a 2: high quality VBR
+            await execPromise(`ffmpeg -i "${inputFilePath}" -vn -acodec libmp3lame -q:a 2 "${outputFilePath}"`);
 
-                if (err) {
-                    console.error('FFmpeg Error:', err);
-                    return m.reply(' Gagal mengekstrak audio.');
-                }
-
-                const audioBuffer = fs.readFileSync(outputFilePath);
-
+            if (fs.existsSync(outputFilePath)) {
+                const audioBuffer = await fs.promises.readFile(outputFilePath);
+                
                 await sock.sendMessage(m.chat, { 
                     audio: audioBuffer, 
                     mimetype: 'audio/mpeg',
                     fileName: `${Date.now()}.mp3`
                 }, { quoted: m });
 
-                fs.unlinkSync(outputFilePath);
-            });
+                // Cleanup
+                await fs.promises.unlink(inputFilePath).catch(() => {});
+                await fs.promises.unlink(outputFilePath).catch(() => {});
+            } else {
+                throw new Error('Output file not generated');
+            }
 
         } catch (error) {
             console.error('ToMP3 Error:', error);
-            m.reply(' Terjadi kesalahan saat memproses video.');
+            m.reply(`❌ Gagal mengekstrak audio: ${error.message}`);
         }
     }
 };

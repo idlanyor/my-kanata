@@ -1,4 +1,4 @@
-import { proto, prepareWAMessageMedia, generateWAMessageFromContent } from '@whiskeysockets/baileys';
+import { proto, prepareWAMessageMedia, generateWAMessageFromContent } from 'baileys';
 import ytSearch from 'yt-search';
 
 export default {

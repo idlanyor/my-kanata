@@ -1,8 +1,10 @@
-import { DisconnectReason } from '@whiskeysockets/baileys';
+import { DisconnectReason } from 'baileys';
+import qrcode from 'qrcode-terminal';
 import cron from 'node-cron';
 import axios from 'axios';
 import fsExtra from 'fs-extra';
 import { messageHandler, clearSettingsCache } from '../handlers/messageHandler.js';
+import { groupParticipantsUpdate } from '../handlers/groupHandler.js';
 import logger from './logger.js';
 import { sendBackupToOwner } from './backup.js';
 import Server from '../database/models/Server.js';
@@ -90,6 +92,7 @@ const runGroupDelete = async (sock, data, ack) => {
 };
 
 const registerBotSocketCommands = (sock) => {
+    if (!botSocket.socket) return;
     botSocket.socket.off('bot:command').on('bot:command', async (data, ack) => {
         if (data.command === 'group:sync') {
             await runGroupSync(sock, data, ack);
@@ -102,20 +105,31 @@ const registerBotSocketCommands = (sock) => {
     });
 };
 
-export const registerSocketEvents = ({ sock, saveCreds, connectToWhatsApp, authFolder }) => {
+export const registerSocketEvents = ({ sock, saveCreds, connectToWhatsApp, authFolder, onOpen }) => {
     sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect } = update;
+        const { connection, lastDisconnect, qr } = update;
+
+        if (qr) {
+            qrcode.generate(qr, { small: true });
+        }
+
         if (connection === 'close') {
             const statusCode = lastDisconnect.error?.output?.statusCode;
+            logger.warn(`WhatsApp connection closed. statusCode=${statusCode ?? 'unknown'}`);
             if (statusCode === DisconnectReason.loggedOut) {
-                logger.error('Logged out. Deleting auth folder...');
-                fsExtra.emptyDirSync(authFolder);
+                logger.error('Logged out. Please scan QR again.');
+                // fsExtra.emptyDirSync(authFolder); // Jangan hapus otomatis biar nggak repot
                 process.exit(1);
+            }
+
+            if (statusCode === DisconnectReason.connectionReplaced) {
+                logger.error('WhatsApp session was replaced by another connection. Stopping auto-reconnect to avoid a 440 loop.');
+                return;
             }
 
             const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
             if (shouldReconnect) {
-                if (statusCode === DisconnectReason.restartRequired || statusCode === DisconnectReason.connectionLost) {
+                if (statusCode === DisconnectReason.restartRequired || statusCode === DisconnectReason.connectionLost || statusCode === 405) {
                     setTimeout(() => connectToWhatsApp(), 5000);
                 } else {
                     connectToWhatsApp();
@@ -123,6 +137,7 @@ export const registerSocketEvents = ({ sock, saveCreds, connectToWhatsApp, authF
             }
         } else if (connection === 'open') {
             logger.info(' Opened connection to WhatsApp');
+            if (typeof onOpen === 'function') onOpen();
         }
     });
 
@@ -131,6 +146,10 @@ export const registerSocketEvents = ({ sock, saveCreds, connectToWhatsApp, authF
         if (type === 'notify' && Array.isArray(messages) && messages.length > 0) {
             await Promise.allSettled(messages.map((m) => messageHandler(sock, m)));
         }
+    });
+
+    sock.ev.on('group-participants.update', async (data) => {
+        await groupParticipantsUpdate(sock, data);
     });
 
     registerBotSocketCommands(sock);

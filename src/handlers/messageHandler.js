@@ -14,10 +14,35 @@ import {
     handleAutoAiPrivate
 } from './messageFlow.js';
 import { handleButtons } from './buttonHandler.js';
+import { sessionManager } from '../lib/session.js';
 
 export { clearSettingsCache } from './messageFlow.js';
 
 const processingMessages = new Set();
+const metadataCache = new Map();
+const METADATA_TTL = 5 * 60 * 1000; // 5 minutes
+
+const buildJidCandidates = (...values) => {
+    const candidates = new Set();
+
+    for (const value of values) {
+        if (!value || typeof value !== 'string') continue;
+        candidates.add(value);
+
+        const decoded = decodeJid(value);
+        if (decoded) candidates.add(decoded);
+
+        const userPart = value.split('@')[0];
+        if (userPart) candidates.add(userPart);
+
+        if (decoded && decoded.includes('@')) {
+            const decodedUserPart = decoded.split('@')[0];
+            if (decodedUserPart) candidates.add(decodedUserPart);
+        }
+    }
+
+    return [...candidates];
+};
 
 const getBotIdentity = (sock) => {
     const ownerJid = decodeJid(settings.ownerNumber);
@@ -95,6 +120,23 @@ export const messageHandler = async (sock, m) => {
         }
 
         m = serialize(m, sock);
+        
+        if (m.isGroup) {
+            const now = Date.now();
+            const cached = metadataCache.get(m.chat);
+            
+            if (cached && (now - cached.time < METADATA_TTL)) {
+                m.metadata = cached.data;
+            } else {
+                try {
+                    m.metadata = await sock.groupMetadata(m.chat);
+                    metadataCache.set(m.chat, { data: m.metadata, time: now });
+                } catch {
+                    m.metadata = cached ? cached.data : {};
+                }
+            }
+        }
+
         if (!m.body && !m.mtype) return;
 
         if (m.chat?.endsWith('@newsletter')) return;
@@ -105,11 +147,29 @@ export const messageHandler = async (sock, m) => {
             logger.info(`${chalk.bold(senderName)}: ${chalk.white(m.body.slice(0, 50))}${m.body.length > 50 ? '...' : ''}`, chatInfo);
         }
 
+        const botSettings = await getCachedSettings();
         const { ownerJid, ownerLid, botJid, botLid } = getBotIdentity(sock);
-        const isOwner = m.sender ? [ownerJid, ownerLid, botJid, botLid].includes(m.sender) : false;
+        
+        // Define isOwner including DB owners
+        const staticOwners = [ownerJid, ownerLid, botJid, botLid];
+        const dbOwners = botSettings.owners || [];
+        const isOwner = m.sender ? [...staticOwners, ...dbOwners].includes(m.sender) : false;
+
         logger.debug(`Sender: ${m.sender} | isOwner: ${isOwner}`, 'HANDLER');
 
         if (!m.sender) return;
+
+        // --- SESSION HANDLER INTERCEPTION ---
+        const activeSession = sessionManager.get(m.sender);
+        if (activeSession && !m.body.startsWith(settings.prefix)) {
+            const command = commands.get(activeSession.data.commandName);
+            if (command && typeof command.handleSession === 'function') {
+                logger.debug(`Delegating message to session handler: ${activeSession.data.commandName}`, 'HANDLER');
+                await command.handleSession(sock, m, activeSession);
+                return;
+            }
+        }
+        // ------------------------------------
 
         // Check for delete server confirmation early (owner only)
         if (isOwner && global.confirmDelete?.has(m.sender)) {
@@ -121,9 +181,12 @@ export const messageHandler = async (sock, m) => {
             global.lastOwnerActivity = Date.now();
         }
 
-        // Fetch settings once and reuse
-        const botSettings = await getCachedSettings();
+        // Fetch group settings
         const groupData = m.isGroup ? await getGroupSettings(m.chat, m.metadata?.subject || '') : null;
+
+        if (!m.isGroup && !isOwner) {
+            logger.debug(`Private Chat Check - mustJoinGroup: ${botSettings.mustJoinGroup}, Link: ${botSettings.groupInviteLink}`, 'HANDLER');
+        }
 
         if (await handlePreProcessing(sock, m, groupData, isOwner)) return;
         await handleSpecialMessages(sock, m);
@@ -135,16 +198,29 @@ export const messageHandler = async (sock, m) => {
 
         if (!m.isGroup && !isOwner && botSettings.mustJoinGroup) {
             try {
+                if (global.targetGroupInviteLink !== botSettings.groupInviteLink) {
+                    global.targetGroupJid = null;
+                    global.targetGroupInviteLink = botSettings.groupInviteLink;
+                }
+
                 if (!global.targetGroupJid) {
                     const code = botSettings.groupInviteLink.split('chat.whatsapp.com/')[1];
                     const groupInfo = await sock.groupGetInviteInfo(code);
                     global.targetGroupJid = groupInfo.id;
                 }
 
-                const participants = await getRequiredGroupParticipants(sock, global.targetGroupJid);
-                const isMember = participants.has(decodeJid(m.sender));
+                const senderCandidates = buildJidCandidates(m.sender, m.key?.participant, m.key?.remoteJid);
+                let participants = await getRequiredGroupParticipants(sock, global.targetGroupJid);
+                let isMember = senderCandidates.some((candidate) => participants.has(candidate));
 
                 if (!isMember) {
+                    // Refresh cache and try again, in case the user just joined
+                    participants = await getRequiredGroupParticipants(sock, global.targetGroupJid, true);
+                    isMember = senderCandidates.some((candidate) => participants.has(candidate));
+                }
+
+                if (!isMember) {
+                    logger.debug(`Access denied for ${m.sender}, not a member of required group`, 'HANDLER');
                     return m.reply(`*AKSES DITOLAK*\n\nMaaf @${m.sender.split('@')[0]}, untuk menggunakan bot ini di Private Chat, kamu wajib bergabung ke grup official kami terlebih dahulu.\n\n*Link Grup:* ${botSettings.groupInviteLink}\n\nSetelah bergabung, silakan coba lagi!`, { mentions: [m.sender] });
                 }
             } catch (e) {
@@ -173,13 +249,16 @@ export const messageHandler = async (sock, m) => {
                 }
 
                 if (command.category === 'Owner' && !isOwner) {
+                    logger.debug(`Command ${cmdName} rejected: Owner only`, 'HANDLER');
                     return m.reply(' Akses Ditolak. Perintah ini hanya untuk Owner.');
                 }
 
-                await sock.sendPresenceUpdate('composing', m.chat);
+                await sock.sendPresenceUpdate('composing', m.chat).catch(() => {});
 
                 try {
+                    logger.debug(`Executing ${cmdName} for ${m.sender} (MsgID: ${m.id})`, 'HANDLER');
                     await command.execute(sock, m, m.args, m.text);
+                    logger.debug(`Command ${cmdName} execution finished`, 'HANDLER');
                 } catch (err) {
                     logger.error(err, `Error in command: ${cmdName}`);
                     const errorMsg = ` *COMMAND ERROR REPORT*\n\n` +

@@ -1,4 +1,4 @@
-import Transaction from '../../database/models/Transaction.js';
+import { deleteTransaction } from '../../lib/financeService.js';
 
 export default {
     name: 'hapus',
@@ -8,32 +8,20 @@ export default {
     execute: async (sock, m, args, text) => {
         try {
             const userId = m.sender;
+            const targetId = args[0] || null;
 
-            // Jika ada ID yang diberikan (misal dari daftar laporan)
-            if (args[0]) {
-                const targetId = args[0];
-                const deleted = await Transaction.findOneAndDelete({ _id: targetId, userId });
-                
-                if (!deleted) {
-                    return m.reply('Transaksi tidak ditemukan atau ID salah. Pastikan kamu hanya menghapus transaksimu sendiri.');
-                }
-
-                return m.reply(` Berhasil menghapus transaksi:\n\n*${deleted.description}* - Rp ${new Intl.NumberFormat('id-ID').format(deleted.amount)}`);
-            }
-
-            // Jika tidak ada argumen, hapus transaksi TERAKHIR milik user tersebut
-            const lastTx = await Transaction.findOne({ userId }).sort({ createdAt: -1 });
-
-            if (!lastTx) {
-                return m.reply('Kamu belum memiliki riwayat transaksi untuk dihapus.');
-            }
-
-            // Konfirmasi penghapusan transaksi terakhir
-            await Transaction.findByIdAndDelete(lastTx._id);
-
-            const amountFormatted = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(lastTx.amount);
+            const deleted = await deleteTransaction(userId, targetId);
             
-            await m.reply(` *TRANSAKSI TERAKHIR DIHAPUS*\n\n*Keterangan:* ${lastTx.description}\n*Nominal:* ${amountFormatted}\n*Kategori:* ${lastTx.category}\n\n_Gunakan ".laporan" untuk melihat daftar lengkap._`);
+            if (!deleted) {
+                return m.reply(targetId 
+                    ? 'Transaksi tidak ditemukan atau ID salah. Pastikan kamu hanya menghapus transaksimu sendiri.'
+                    : 'Kamu belum memiliki riwayat transaksi untuk dihapus.'
+                );
+            }
+
+            const amountFormatted = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(deleted.amount);
+            
+            await m.reply(` *TRANSAKSI BERHASIL DIHAPUS*\n\n*Keterangan:* ${deleted.description}\n*Nominal:* ${amountFormatted}\n*Kategori:* ${deleted.category}\n\n_Gunakan ".laporan" untuk melihat daftar lengkap._`);
 
         } catch (error) {
             console.error('Hapus Error:', error);

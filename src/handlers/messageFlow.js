@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { decryptPollVote, jidNormalizedUser } from '@whiskeysockets/baileys';
+import { decryptPollVote, jidNormalizedUser } from 'baileys';
 import { createHash } from 'crypto';
 import { settings } from '../config/settings.js';
 import Settings from '../database/models/Settings.js';
@@ -15,6 +15,17 @@ const requiredGroupParticipantsCache = new Map();
 const SETTINGS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes (was 1 minute)
 const GROUP_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes (was 1 minute)
 const REQUIRED_GROUP_PARTICIPANTS_TTL_MS = 5 * 60 * 1000; // 5 minutes (was 2 minutes)
+
+const addJidVariants = (bucket, jid) => {
+    if (!jid || typeof jid !== 'string') return;
+    bucket.add(jid);
+
+    const normalized = jidNormalizedUser(jid);
+    if (normalized) bucket.add(normalized);
+
+    const userPart = jid.split('@')[0];
+    if (userPart) bucket.add(userPart);
+};
 
 export const getCachedSettings = async () => {
     const now = Date.now();
@@ -77,15 +88,19 @@ export const cleanupCaches = () => {
     return cleaned;
 };
 
-export const getRequiredGroupParticipants = async (sock, groupJid) => {
+export const getRequiredGroupParticipants = async (sock, groupJid, forceRefresh = false) => {
     const now = Date.now();
     const cached = requiredGroupParticipantsCache.get(groupJid);
-    if (cached && now - cached.timestamp < REQUIRED_GROUP_PARTICIPANTS_TTL_MS) {
+    if (!forceRefresh && cached && now - cached.timestamp < REQUIRED_GROUP_PARTICIPANTS_TTL_MS) {
         return cached.participants;
     }
 
     const groupMetadata = await sock.groupMetadata(groupJid);
-    const participants = new Set(groupMetadata.participants.map((p) => jidNormalizedUser(p.id)));
+    const participants = new Set();
+    for (const participant of groupMetadata.participants) {
+        addJidVariants(participants, participant.id);
+        addJidVariants(participants, participant.lid);
+    }
     requiredGroupParticipantsCache.set(groupJid, { participants, timestamp: now });
     return participants;
 };

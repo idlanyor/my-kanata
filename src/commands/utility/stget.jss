@@ -1,6 +1,6 @@
 import stickerly from '../../lib/stickerly.js';
 import axios from 'axios';
-import { generateWAMessageFromContent, prepareWAMessageMedia } from '@whiskeysockets/baileys';
+import { generateWAMessageFromContent, prepareWAMessageMedia } from 'baileys';
 import { settings } from '../../config/settings.js';
 import sharp from 'sharp';
 import { zipSync } from 'fflate';

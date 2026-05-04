@@ -1,5 +1,5 @@
 import ILovePDfSdk from 'ilovepdf-sdk';
-import { downloadContentFromMessage } from '@whiskeysockets/baileys';
+import { downloadContentFromMessage } from 'baileys';
 import fs from 'fs';
 import path from 'path';
 import { settings } from '../../config/settings.js';

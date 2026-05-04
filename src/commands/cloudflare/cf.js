@@ -1,5 +1,6 @@
 import { listRules, createRule, deleteRule } from '../../lib/cloudflare.js';
-import { settings } from '../../config/settings.js';
+import Settings from '../../database/models/Settings.js';
+import { getCachedSettings } from '../../handlers/messageFlow.js';
 
 export default {
     name: 'cf',
@@ -7,30 +8,47 @@ export default {
     description: 'Cloudflare Account Firewall Management',
     category: 'Cloudflare',
     execute: async (sock, m, args, text) => {
-        // Security: Owner Only
-        const sender = m.sender;
-        const isOwner = sender === settings.ownerNumber || sender === settings.ownerLid || sender.split(':')[0] === settings.ownerNumber.split('@')[0];
+        // --- NEW SECURITY CHECK ---
+        const botSettings = await getCachedSettings();
+        const { settings } = await import('../../config/settings.js');
+        const dbOwners = botSettings.owners || [];
+        const staticOwners = [settings.ownerNumber, settings.ownerLid];
         
+        const isOwner = [...staticOwners, ...dbOwners].includes(m.sender);
         if (!isOwner) return m.reply('Access Denied. Owner only.');
+        // --------------------------
 
-        const command = m.body.slice(settings.prefix.length).trim().split(' ')[0].toLowerCase();
+        const usedPrefix = m.body.slice(0, 1);
+        const command = m.body.slice(usedPrefix.length).trim().split(' ')[0].toLowerCase();
 
         try {
             if (command === 'cf') {
-                let menu = `*Cloudflare Firewall Manager*\n\n`;
-                menu += `• *${settings.prefix}cflist [mode]* - List firewall rules (mode: block/whitelist)\n`;
-                menu += `• *${settings.prefix}cfban <ip> [notes]* - Ban an IP address\n`;
-                menu += `• *${settings.prefix}cfwhitelist <ip> [notes]* - Whitelist an IP address\n`;
-                menu += `• *${settings.prefix}cfunban <ip>* - Remove an IP from rules\n`;
+                let menu = `*── 「 CLOUDFLARE MANAGER 」 ──*\n\n`;
+                menu += `*FIREWALL:*\n`;
+                menu += `• *${usedPrefix}cflist [mode]* - List IP rules (block/whitelist)\n`;
+                menu += `• *${usedPrefix}cfban <ip> [notes]* - Block an IP address\n`;
+                menu += `• *${usedPrefix}cfwhitelist <ip> [notes]* - Allow an IP address\n`;
+                menu += `• *${usedPrefix}cfunban <ip>* - Remove an IP rule\n\n`;
+                
+                menu += `*CONFIG & ZONES:*\n`;
+                menu += `• *${usedPrefix}cfset* - Cloudflare API configuration\n`;
+                menu += `• *${usedPrefix}cfzones* - Manage & sync domains\n`;
+                menu += `• *${usedPrefix}cftest* - Test API connectivity\n\n`;
+                
+                menu += `*DNS RECORDS:*\n`;
+                menu += `• *${usedPrefix}listdns <domain>* - List DNS records\n`;
+                menu += `• *${usedPrefix}adddns <domain> <type> <name> <content>* - Add DNS record\n\n`;
+                
+                menu += `*© Kanata Bot*`;
                 return m.reply(menu);
             }
 
             if (command === 'cflist') {
-                await m.reply('Fetching rules...');
-                const mode = args[0] ? args[0].toLowerCase() : null; // 'block' or 'whitelist'
+                await m.reply('⏳ Fetching rules...');
+                const mode = args[0] ? args[0].toLowerCase() : null; 
                 const rules = await listRules(mode);
                 
-                if (rules.length === 0) return m.reply('No rules found.');
+                if (!rules || rules.length === 0) return m.reply('No rules found.');
 
                 let msg = `*Cloudflare Access Rules*\n\n`;
                 rules.forEach((r, i) => {
@@ -43,29 +61,29 @@ export default {
             
             else if (command === 'cfban') {
                 const ip = args[0];
-                const notes = args.slice(1).join(' ');
-                if (!ip) return m.reply(`Usage: ${settings.prefix}cfban <ip> <notes>`);
+                const notes = args.slice(1).join(' ') || 'Banned via WhatsApp Bot';
+                if (!ip) return m.reply(`Usage: ${usedPrefix}cfban <ip> <notes>`);
 
-                await m.reply('Blocking IP...');
+                await m.reply('⏳ Blocking IP...');
                 const result = await createRule(ip, 'block', notes);
                 await m.reply(`Successfully BANNED IP: *${result.configuration.value}*\nID: ${result.id}`);
             } 
             
             else if (command === 'cfwhitelist') {
                 const ip = args[0];
-                const notes = args.slice(1).join(' ');
-                if (!ip) return m.reply(`Usage: ${settings.prefix}cfwhitelist <ip> <notes>`);
+                const notes = args.slice(1).join(' ') || 'Whitelisted via WhatsApp Bot';
+                if (!ip) return m.reply(`Usage: ${usedPrefix}cfwhitelist <ip> <notes>`);
 
-                await m.reply('Whitelisting IP...');
+                await m.reply('⏳ Whitelisting IP...');
                 const result = await createRule(ip, 'whitelist', notes);
                 await m.reply(`Successfully WHITELISTED IP: *${result.configuration.value}*\nID: ${result.id}`);
             }
 
             else if (command === 'cfunban') {
                 const ip = args[0];
-                if (!ip) return m.reply(`Usage: ${settings.prefix}cfunban <ip>`);
+                if (!ip) return m.reply(`Usage: ${usedPrefix}cfunban <ip>`);
 
-                await m.reply('Deleting rule...');
+                await m.reply('⏳ Deleting rule...');
                 const result = await deleteRule(ip);
                 
                 if (result) {
@@ -77,7 +95,8 @@ export default {
 
         } catch (error) {
             console.error(error);
-            await m.reply(` Error: ${error.message || 'Unknown error'}`);
+            const errMsg = error.response?.data?.errors?.[0]?.message || error.message;
+            await m.reply(`❌ Error: ${errMsg}`);
         }
     }
 };

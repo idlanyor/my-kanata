@@ -1,85 +1,71 @@
-import Group from '../database/models/Group.js';
+import { jidNormalizedUser } from 'baileys';
+import { getGroupSettings } from './messageFlow.js';
+import { adContext } from '../lib/adReply.js';
 import logger from '../lib/logger.js';
-import axios from 'axios';
 
-/**
- * Helper untuk ambil buffer gambar dari URL
- */
-async function getBuffer(url) {
+export const groupParticipantsUpdate = async (sock, { id, participants, action }) => {
     try {
-        const response = await axios.get(url, { responseType: 'arraybuffer' });
-        return Buffer.from(response.data);
-    } catch {
-        return null;
-    }
-}
+        logger.debug(`Group Update - ID: ${id}, Action: ${action}, Participants: ${participants.join(', ')}`, 'GROUP-EVENT');
+        const groupData = await getGroupSettings(id);
+        if (!groupData) {
+            logger.warn(`No settings found for group: ${id}`, 'GROUP-EVENT');
+            return;
+        }
 
-export const groupParticipantsHandler = async (sock, anu) => {
-    const { id, participants, action } = anu;
-    
-    try {
-        const groupData = await Group.findOne({ jid: id });
-        if (!groupData) return;
-
-        const metadata = await sock.groupMetadata(id);
-        
-        for (const jid of participants) {
-            let targetJid = jid;
-
-            // Mapping LID ke PN jika tersedia di metadata
-            const participantInfo = metadata.participants.find(p => p.id === jid || p.lid === jid);
-            if (participantInfo?.id && participantInfo.id.endsWith('@s.whatsapp.net')) {
-                targetJid = participantInfo.id;
+        // Ambil metadata tambahan jika deskripsi dibutuhkan
+        let groupDesc = groupData.desc || '';
+        if (!groupDesc && (groupData.welcomeMsg.includes('@desc') || groupData.leaveMsg.includes('@desc'))) {
+            try {
+                const meta = await sock.groupMetadata(id);
+                groupDesc = meta.desc || '-';
+            } catch {
+                groupDesc = '-';
             }
+        }
 
-            // Ambil URL Foto Profil
-            const ppUrl = await sock.profilePictureUrl(jid, 'image').catch(() => 'https://ui-avatars.com/api/?name=User&background=000&color=fff&size=512');
-            const ppBuffer = await getBuffer(ppUrl);
+        logger.debug(`Group Settings for ${id} - Welcome: ${groupData.welcome}, Left: ${groupData.left}`, 'GROUP-EVENT');
+
+        for (const participant of participants) {
+            // Baileys can send string JID or object with id property
+            const rawJid = typeof participant === 'string' ? participant : (participant.id || participant.jid);
+            if (!rawJid) continue;
+
+            const userJid = jidNormalizedUser(rawJid);
+            const userTag = `@${userJid.split('@')[0]}`;
             
             if (action === 'add' && groupData.welcome) {
-                const text = groupData.welcomeMsg
-                    .replace('@user', `@${jid.split('@')[0]}`)
-                    .replace('@group', metadata.subject)
-                    .replace('@desc', metadata.desc?.toString() || '-');
-                
-                await sock.sendMessage(id, { 
-                    text, 
-                    mentions: [jid],
+                const message = groupData.welcomeMsg
+                    .replace(/@user/g, userTag)
+                    .replace(/@group/g, groupData.name || 'this group')
+                    .replace(/@desc/g, groupDesc);
+
+                const ctx = await adContext({
+                    title: `WELCOME TO ${groupData.name}`,
+                    body: `Hello ${userTag}!`,
+                });
+
+                await sock.sendMessage(id, {
+                    text: message,
                     contextInfo: {
-                        externalAdReply: {
-                            title: `W E L C O M E  U S E R`,
-                            body: `Member baru di ${metadata.subject}`,
-                            mediaType: 1,
-                            thumbnail: ppBuffer,
-                            sourceUrl: 'https://api.kanata.web.id',
-                            renderLargerThumbnail: true
-                        }
+                        ...ctx.contextInfo,
+                        mentionedJid: [userJid]
                     }
                 });
-            } 
-            
-            else if (action === 'remove' && groupData.left) {
-                const text = groupData.leaveMsg
-                    .replace('@user', `@${jid.split('@')[0]}`)
-                    .replace('@group', metadata.subject);
-                
-                await sock.sendMessage(id, { 
-                    text, 
-                    mentions: [jid],
+            } else if (action === 'remove' && groupData.left) {
+                const message = groupData.leaveMsg
+                    .replace(/@user/g, userTag)
+                    .replace(/@group/g, groupData.name || 'this group')
+                    .replace(/@desc/g, groupDesc);
+
+                await sock.sendMessage(id, {
+                    text: message,
                     contextInfo: {
-                        externalAdReply: {
-                            title: `G O O D  B Y E  U S E R`,
-                            body: `Seseorang keluar dari ${metadata.subject}`,
-                            mediaType: 1,
-                            thumbnail: ppBuffer,
-                            sourceUrl: 'https://api.kanata.web.id',
-                            renderLargerThumbnail: true
-                        }
+                        mentionedJid: [userJid]
                     }
                 });
             }
         }
     } catch (err) {
-        logger.error(err, 'Error in groupParticipantsHandler');
+        logger.error(err, 'Error in groupParticipantsUpdate handler');
     }
 };
