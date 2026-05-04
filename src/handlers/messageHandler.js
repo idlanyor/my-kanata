@@ -20,7 +20,9 @@ export { clearSettingsCache } from './messageFlow.js';
 
 const processingMessages = new Set();
 const metadataCache = new Map();
+const metadataPromiseCache = new Map();
 const METADATA_TTL = 5 * 60 * 1000; // 5 minutes
+const prefixes = [settings.prefix, '.', '!', '/'];
 
 const buildJidCandidates = (...values) => {
     const candidates = new Set();
@@ -50,6 +52,37 @@ const getBotIdentity = (sock) => {
     const botJid = decodeJid(sock.user.id);
     const botLid = sock.user.lid ? decodeJid(sock.user.lid) : null;
     return { ownerJid, ownerLid, botJid, botLid };
+};
+
+const getCachedGroupMetadata = (jid) => {
+    const cached = metadataCache.get(jid);
+    if (!cached) return null;
+
+    const isFresh = Date.now() - cached.time < METADATA_TTL;
+    return {
+        data: cached.data,
+        isFresh,
+    };
+};
+
+const refreshGroupMetadata = async (sock, jid) => {
+    const existingPromise = metadataPromiseCache.get(jid);
+    if (existingPromise) {
+        return existingPromise;
+    }
+
+    const promise = (async () => {
+        try {
+            const data = await sock.groupMetadata(jid);
+            metadataCache.set(jid, { data, time: Date.now() });
+            return data;
+        } finally {
+            metadataPromiseCache.delete(jid);
+        }
+    })();
+
+    metadataPromiseCache.set(jid, promise);
+    return promise;
 };
 
 const handleDeleteServerConfirmation = async (m) => {
@@ -120,31 +153,28 @@ export const messageHandler = async (sock, m) => {
         }
 
         m = serialize(m, sock);
-        
-        if (m.isGroup) {
-            const now = Date.now();
-            const cached = metadataCache.get(m.chat);
-            
-            if (cached && (now - cached.time < METADATA_TTL)) {
-                m.metadata = cached.data;
-            } else {
-                try {
-                    m.metadata = await sock.groupMetadata(m.chat);
-                    metadataCache.set(m.chat, { data: m.metadata, time: now });
-                } catch {
-                    m.metadata = cached ? cached.data : {};
-                }
-            }
-        }
 
         if (!m.body && !m.mtype) return;
 
         if (m.chat?.endsWith('@newsletter')) return;
+
+        const usedPrefix = m.body ? prefixes.find((p) => m.body.startsWith(p)) : undefined;
+        const cachedMetadata = m.isGroup ? getCachedGroupMetadata(m.chat) : null;
+        m.metadata = cachedMetadata?.data || {};
+
+        if (m.isGroup && !cachedMetadata?.isFresh) {
+            refreshGroupMetadata(sock, m.chat).catch(() => {});
+        }
+
         if (m.body) {
             saveMessage(m);
             const senderName = m.pushName || (m.sender ? m.sender.split('@')[0] : 'Unknown');
-            const chatInfo = m.isGroup ? `[${m.metadata?.subject || 'Group'}]` : '[Private]';
-            logger.info(`${chalk.bold(senderName)}: ${chalk.white(m.body.slice(0, 50))}${m.body.length > 50 ? '...' : ''}`, chatInfo);
+            logger.chat({
+                chatType: m.isGroup ? 'GROUP' : 'PRIVATE',
+                chatName: m.isGroup ? (m.metadata?.subject || 'Group') : 'Private Chat',
+                sender: senderName,
+                body: m.body,
+            });
         }
 
         const botSettings = await getCachedSettings();
@@ -181,8 +211,10 @@ export const messageHandler = async (sock, m) => {
             global.lastOwnerActivity = Date.now();
         }
 
-        // Fetch group settings
-        const groupData = m.isGroup ? await getGroupSettings(m.chat, m.metadata?.subject || '') : null;
+        const shouldLoadGroupData = m.isGroup && !isOwner && !m.key.fromMe;
+        const groupData = shouldLoadGroupData
+            ? await getGroupSettings(m.chat, m.metadata?.subject || '')
+            : null;
 
         if (!m.isGroup && !isOwner) {
             logger.debug(`Private Chat Check - mustJoinGroup: ${botSettings.mustJoinGroup}, Link: ${botSettings.groupInviteLink}`, 'HANDLER');
@@ -228,16 +260,27 @@ export const messageHandler = async (sock, m) => {
             }
         }
 
-        const prefixes = [settings.prefix, '.', '!', '/'];
-        const usedPrefix = prefixes.find((p) => m.body.startsWith(p));
         logger.debug(`usedPrefix: ${usedPrefix} | body: ${m.body} | total commands: ${commands.size}`, 'HANDLER');
 
         if (usedPrefix) {
+            if (m.isGroup && !m.metadata?.subject) {
+                try {
+                    m.metadata = await refreshGroupMetadata(sock, m.chat);
+                } catch {}
+            }
+
             const cmdName = m.body.slice(usedPrefix.length).trim().split(/\s+/)[0].toLowerCase();
             const command = commands.get(cmdName) || [...commands.values()].find((c) => c.aliases?.includes(cmdName));
             logger.debug(`cmdName: ${cmdName} | found: ${!!command}`, 'HANDLER');
 
             if (command) {
+                logger.command({
+                    phase: 'RUN',
+                    name: cmdName,
+                    sender: m.sender,
+                    chat: m.isGroup ? (m.metadata?.subject || m.chat) : m.chat,
+                    extra: `mode=${botSettings.mode}`,
+                });
                 logger.debug(`Executing command: ${cmdName} | Mode: ${botSettings.mode} | isOwner: ${isOwner}`, 'HANDLER');
                 if (botSettings.mode === 'self' && !isOwner) {
                     logger.debug(`Ignored: Self mode and not owner`, 'HANDLER');
@@ -258,8 +301,21 @@ export const messageHandler = async (sock, m) => {
                 try {
                     logger.debug(`Executing ${cmdName} for ${m.sender} (MsgID: ${m.id})`, 'HANDLER');
                     await command.execute(sock, m, m.args, m.text);
+                    logger.command({
+                        phase: 'DONE',
+                        name: cmdName,
+                        sender: m.sender,
+                        chat: m.isGroup ? (m.metadata?.subject || m.chat) : m.chat,
+                    });
                     logger.debug(`Command ${cmdName} execution finished`, 'HANDLER');
                 } catch (err) {
+                    logger.command({
+                        phase: 'FAIL',
+                        name: cmdName,
+                        sender: m.sender,
+                        chat: m.isGroup ? (m.metadata?.subject || m.chat) : m.chat,
+                        extra: err.message,
+                    });
                     logger.error(err, `Error in command: ${cmdName}`);
                     const errorMsg = ` *COMMAND ERROR REPORT*\n\n` +
                         `➛ *Command:* ${cmdName}\n` +

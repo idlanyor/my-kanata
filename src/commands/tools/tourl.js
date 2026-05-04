@@ -35,7 +35,29 @@ export default {
                                 ` *URL:* ${url}\n` +
                                 ` *File Name:* ${original_filename || responseFilename || filename}\n` +
                                 ` *Mime Type:* ${content_type}`;
-                
+
+                const payload = {
+                    text: caption,
+                    footer: 'Klik tombol untuk copy URL',
+                    title: 'KANATA UPLOADER',
+                    interactiveButtons: [
+                        {
+                            name: 'cta_copy',
+                            buttonParamsJson: JSON.stringify({
+                                display_text: 'Copy URL',
+                                copy_code: url
+                            })
+                        }
+                    ]
+                };
+
+                if (typeof sock.sendInteractiveButtons === 'function') {
+                    try {
+                        await sock.sendInteractiveButtons(m.chat, payload, { quoted: m });
+                        return;
+                    } catch {}
+                }
+
                 await m.reply(caption);
             } else {
                 throw new Error('Failed to get URL from response');

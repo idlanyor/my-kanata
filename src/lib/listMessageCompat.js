@@ -315,6 +315,17 @@ export const attachListMessageCompat = (sock) => {
         return relayContent(sock, jid, await buildInteractiveListMessage(sock, payload), options);
     };
 
+    sock.sendInteractiveButtons = async (jid, payload, options = {}) => {
+        if (!Array.isArray(payload?.interactiveButtons) || payload.interactiveButtons.length === 0) {
+            throw new Error('interactiveButtons must be a non-empty array');
+        }
+
+        return relayContent(sock, jid, {
+            ...payload,
+            viewOnce: payload.viewOnce ?? true,
+        }, options);
+    };
+
     sock.sendMessage = async (jid, content, options = {}) => {
         if (content && typeof content === 'object') {
             if (Array.isArray(content.sections) && content.buttonText) {
@@ -323,6 +334,10 @@ export const attachListMessageCompat = (sock) => {
 
             if (content.interactiveList && typeof content.interactiveList === 'object') {
                 return sock.sendInteractiveList(jid, content.interactiveList, options);
+            }
+
+            if (Array.isArray(content.interactiveButtons) && content.interactiveButtons.length > 0) {
+                return sock.sendInteractiveButtons(jid, content, options);
             }
         }
 

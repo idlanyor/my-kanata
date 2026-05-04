@@ -115,6 +115,12 @@ export const registerSocketEvents = ({ sock, saveCreds, connectToWhatsApp, authF
 
         if (connection === 'close') {
             const statusCode = lastDisconnect.error?.output?.statusCode;
+            logger.event({
+                scope: 'WA',
+                action: 'Connection closed',
+                details: `statusCode=${statusCode ?? 'unknown'}`,
+                level: 'warn',
+            });
             logger.warn(`WhatsApp connection closed. statusCode=${statusCode ?? 'unknown'}`);
             if (statusCode === DisconnectReason.loggedOut) {
                 logger.error('Logged out. Please scan QR again.');
@@ -136,6 +142,11 @@ export const registerSocketEvents = ({ sock, saveCreds, connectToWhatsApp, authF
                 }
             }
         } else if (connection === 'open') {
+            logger.event({
+                scope: 'WA',
+                action: 'Connection opened',
+                level: 'success',
+            });
             logger.info(' Opened connection to WhatsApp');
             if (typeof onOpen === 'function') onOpen();
         }

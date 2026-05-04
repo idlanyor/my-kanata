@@ -42,7 +42,37 @@ export default {
             body: `Status: Online | Speed: ${latensi}ms`
         });
 
-        await sock.sendMessage(m.chat, { 
+        const payload = {
+            text: statsText,
+            contextInfo: ctx,
+            footer: 'Aksi cepat',
+            title: 'KANATA BOT PERFORMANCE',
+            interactiveButtons: [
+                {
+                    name: 'quick_reply',
+                    buttonParamsJson: JSON.stringify({
+                        display_text: 'Speedtest',
+                        id: '.speedtest'
+                    })
+                },
+                {
+                    name: 'quick_reply',
+                    buttonParamsJson: JSON.stringify({
+                        display_text: 'System Info',
+                        id: '.is'
+                    })
+                }
+            ]
+        };
+
+        if (typeof sock.sendInteractiveButtons === 'function') {
+            try {
+                await sock.sendInteractiveButtons(m.chat, payload, { quoted: m });
+                return;
+            } catch {}
+        }
+
+        await sock.sendMessage(m.chat, {
             text: statsText,
             contextInfo: ctx
         }, { quoted: m });

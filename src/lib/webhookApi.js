@@ -491,7 +491,7 @@ export const startWebhookApi = ({ getSocket }) => {
     });
 
     server.listen(port, () => {
-        logger.success(`Webhook API listening on :${port}`, 'WEBHOOK');
+        logger.success(`Listen :${port}`, 'WEBHOOK');
     });
 
     server.on('error', (err) => {
