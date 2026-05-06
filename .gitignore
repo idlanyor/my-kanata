@@ -11,3 +11,4 @@ backups/
 AGENTS.md
 .cache
 /webui
+logs/
