@@ -132,16 +132,16 @@ const startBot = async () => {
 
     const { state, saveCreds } = await useMultiFileAuthState(authFolder);
     await sanitizeAuthFolder(authFolder);
-    state.keys = wrapSignalKeyStoreWithSanitizer(state.keys, authFolder);
+    // state.keys = wrapSignalKeyStoreWithSanitizer(state.keys, authFolder); // Di-disable sementara karena terlalu agresif
     const { version } = await fetchLatestBaileysVersion();
     
     const sock = makeWASocket({
         version,
-        logger: pino({ level: 'silent' }),
+        logger: pino({ level: 'warn' }),
         printQRInTerminal: false,
         auth: {
             creds: state.creds,
-            keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' })),
+            keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'warn' })),
         },
         browser: Browsers.macOS('safari'),
         msgRetryCounterCache,
@@ -150,8 +150,8 @@ const startBot = async () => {
         syncFullHistory: false,
         shouldSyncHistoryMessage: () => false,
         connectTimeoutMs: 60000,
-        defaultQueryTimeoutMs: 0,
-        keepAliveIntervalMs: 10000,
+        defaultQueryTimeoutMs: 60000,
+        keepAliveIntervalMs: 30000,
         patchMessageBeforeSending: async (message) => patchInteractiveMessageForMd(message),
     });
 
