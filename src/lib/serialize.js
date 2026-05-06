@@ -26,11 +26,11 @@ export const serialize = (m, sock) => {
         let mime = msg.mimetype || '';
         let messageType = message.mtype ? message.mtype.replace(/Message/gi, '') : mime.split('/')[0];
         const stream = await downloadContentFromMessage(msg, messageType);
-        let buffer = Buffer.from([]);
+        const chunks = [];
         for await (const chunk of stream) {
-            buffer = Buffer.concat([buffer, chunk]);
+            chunks.push(chunk);
         }
-        return buffer;
+        return Buffer.concat(chunks);
     };
 
     if (m.key) {

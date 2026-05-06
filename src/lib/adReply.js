@@ -1,19 +1,25 @@
-import { Jimp } from "jimp";
-import path from "path";
+import sharp from 'sharp';
+import path from 'path';
 
-// Penampung cache biar nggak download/resize terus-menerus
+// Penampung cache biar nggak resize terus-menerus
 const cache = new Map();
 
 /**
- * Membuat buffer gambar yang sudah di-resize untuk thumbnail WA (Banner Style)
+ * Membuat buffer gambar yang sudah di-resize untuk thumbnail WA (Banner Style) menggunakan SHARP (Fast)
  * @param {string} source - URL atau Path gambar
  */
 const getThumbnailBuffer = async (source) => {
     if (cache.has(source)) return cache.get(source);
     try {
-        const image = await Jimp.read(source);
-        // Menggunakan .cover agar gambar memenuhi area 480x270 tanpa distorsi (crop tengah)
-        const buffer = await image.cover({ w: 480, h: 270 }).getBuffer("image/jpeg");
+        // Menggunakan sharp untuk performa maksimal
+        const buffer = await sharp(source)
+            .resize(480, 270, {
+                fit: 'cover',
+                position: 'center'
+            })
+            .jpeg({ quality: 80 })
+            .toBuffer();
+            
         cache.set(source, buffer);
         return buffer;
     } catch (e) {
@@ -37,6 +43,7 @@ export const adContext = async ({ title = "", body = "", thumbnail = "" } = {}) 
             body: body,
             mediaType: 1,
             thumbnail: thumbBuffer,
+            renderLargerThumbnail: true,
             sourceUrl: "", 
             showAdAttribution: false 
         }

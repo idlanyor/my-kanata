@@ -46,12 +46,17 @@ const buildJidCandidates = (...values) => {
     return [...candidates];
 };
 
+let botIdentityCache = null;
 const getBotIdentity = (sock) => {
+    if (botIdentityCache) return botIdentityCache;
+    
     const ownerJid = decodeJid(settings.ownerNumber);
     const ownerLid = settings.ownerLid ? decodeJid(settings.ownerLid) : null;
     const botJid = decodeJid(sock.user.id);
     const botLid = sock.user.lid ? decodeJid(sock.user.lid) : null;
-    return { ownerJid, ownerLid, botJid, botLid };
+    
+    botIdentityCache = { ownerJid, ownerLid, botJid, botLid };
+    return botIdentityCache;
 };
 
 const getCachedGroupMetadata = (jid) => {
@@ -140,24 +145,31 @@ export const messageHandler = async (sock, m) => {
     processingMessages.add(m.key.id);
 
     try {
-        if (m.key.remoteJid === 'status@broadcast') {
-            const botSettings = await getCachedSettings();
-            const participant = m.key.participant;
-            if (!participant) return;
+        // Parallelized Initial Data Fetching
+        const [botSettings, mSerialized] = await Promise.all([
+            getCachedSettings(),
+            (async () => {
+                if (m.key.remoteJid === 'status@broadcast') return null;
+                return serialize(m, sock);
+            })()
+        ]);
 
-            if (botSettings.autoStatusRead) {
-                await sock.readMessages([m.key]);
-                logger.debug(`Read status from: ${participant.split('@')[0]}`, 'STORY');
+        if (m.key.remoteJid === 'status@broadcast') {
+            if (botSettings?.autoStatusRead) {
+                const participant = m.key.participant;
+                if (participant) {
+                    await sock.readMessages([m.key]);
+                    logger.debug(`Read status from: ${participant.split('@')[0]}`, 'STORY');
+                }
             }
             return;
         }
 
-        m = serialize(m, sock);
-
-        if (!m.body && !m.mtype) return;
-
+        m = mSerialized;
+        if (!m || (!m.body && !m.mtype)) return;
         if (m.chat?.endsWith('@newsletter')) return;
 
+        // 1. Setup metadata and prefixes in parallel
         const usedPrefix = m.body ? prefixes.find((p) => m.body.startsWith(p)) : undefined;
         const cachedMetadata = m.isGroup ? getCachedGroupMetadata(m.chat) : null;
         m.metadata = cachedMetadata?.data || {};
@@ -165,6 +177,16 @@ export const messageHandler = async (sock, m) => {
         if (m.isGroup && !cachedMetadata?.isFresh) {
             refreshGroupMetadata(sock, m.chat).catch(() => {});
         }
+
+        // 2. Parallelize logging, message saving and further data requirements
+        const { ownerJid, ownerLid, botJid, botLid } = getBotIdentity(sock);
+        const staticOwners = [ownerJid, ownerLid, botJid, botLid];
+        const dbOwners = botSettings.owners || [];
+        const isOwner = m.sender ? [...staticOwners, ...dbOwners].includes(m.sender) : false;
+
+        const groupDataPromise = (m.isGroup && !isOwner && !m.key.fromMe)
+            ? getGroupSettings(m.chat, m.metadata?.subject || '')
+            : Promise.resolve(null);
 
         if (m.body) {
             saveMessage(m);
@@ -177,15 +199,7 @@ export const messageHandler = async (sock, m) => {
             });
         }
 
-        const botSettings = await getCachedSettings();
-        const { ownerJid, ownerLid, botJid, botLid } = getBotIdentity(sock);
-        
-        // Define isOwner including DB owners
-        const staticOwners = [ownerJid, ownerLid, botJid, botLid];
-        const dbOwners = botSettings.owners || [];
-        const isOwner = m.sender ? [...staticOwners, ...dbOwners].includes(m.sender) : false;
-
-        logger.debug(`Sender: ${m.sender} | isOwner: ${isOwner}`, 'HANDLER');
+        const groupData = await groupDataPromise;
 
         if (!m.sender) return;
 
@@ -194,12 +208,10 @@ export const messageHandler = async (sock, m) => {
         if (activeSession && !m.body.startsWith(settings.prefix)) {
             const command = commands.get(activeSession.data.commandName);
             if (command && typeof command.handleSession === 'function') {
-                logger.debug(`Delegating message to session handler: ${activeSession.data.commandName}`, 'HANDLER');
                 await command.handleSession(sock, m, activeSession);
                 return;
             }
         }
-        // ------------------------------------
 
         // Check for delete server confirmation early (owner only)
         if (isOwner && global.confirmDelete?.has(m.sender)) {
@@ -211,15 +223,6 @@ export const messageHandler = async (sock, m) => {
             global.lastOwnerActivity = Date.now();
         }
 
-        const shouldLoadGroupData = m.isGroup && !isOwner && !m.key.fromMe;
-        const groupData = shouldLoadGroupData
-            ? await getGroupSettings(m.chat, m.metadata?.subject || '')
-            : null;
-
-        if (!m.isGroup && !isOwner) {
-            logger.debug(`Private Chat Check - mustJoinGroup: ${botSettings.mustJoinGroup}, Link: ${botSettings.groupInviteLink}`, 'HANDLER');
-        }
-
         if (await handlePreProcessing(sock, m, groupData, isOwner)) return;
         await handleSpecialMessages(sock, m);
 
@@ -228,17 +231,14 @@ export const messageHandler = async (sock, m) => {
 
         if (m.key.fromMe && botSettings.mode !== 'self') return;
 
+        // Optimized Join Group Check
         if (!m.isGroup && !isOwner && botSettings.mustJoinGroup) {
             try {
-                if (global.targetGroupInviteLink !== botSettings.groupInviteLink) {
-                    global.targetGroupJid = null;
-                    global.targetGroupInviteLink = botSettings.groupInviteLink;
-                }
-
-                if (!global.targetGroupJid) {
+                if (!global.targetGroupJid || global.targetGroupInviteLink !== botSettings.groupInviteLink) {
                     const code = botSettings.groupInviteLink.split('chat.whatsapp.com/')[1];
                     const groupInfo = await sock.groupGetInviteInfo(code);
                     global.targetGroupJid = groupInfo.id;
+                    global.targetGroupInviteLink = botSettings.groupInviteLink;
                 }
 
                 const senderCandidates = buildJidCandidates(m.sender, m.key?.participant, m.key?.remoteJid);
@@ -246,83 +246,38 @@ export const messageHandler = async (sock, m) => {
                 let isMember = senderCandidates.some((candidate) => participants.has(candidate));
 
                 if (!isMember) {
-                    // Refresh cache and try again, in case the user just joined
                     participants = await getRequiredGroupParticipants(sock, global.targetGroupJid, true);
                     isMember = senderCandidates.some((candidate) => participants.has(candidate));
                 }
 
-                if (!isMember) {
-                    logger.debug(`Access denied for ${m.sender}, not a member of required group`, 'HANDLER');
-                    return m.reply(`*AKSES DITOLAK*\n\nMaaf @${m.sender.split('@')[0]}, untuk menggunakan bot ini di Private Chat, kamu wajib bergabung ke grup official kami terlebih dahulu.\n\n*Link Grup:* ${botSettings.groupInviteLink}\n\nSetelah bergabung, silakan coba lagi!`, { mentions: [m.sender] });
-                }
+                if (!isMember) return m.reply(`*AKSES DITOLAK*\n\nMaaf @${m.sender.split('@')[0]}, untuk menggunakan bot ini di Private Chat, kamu wajib bergabung ke grup official kami terlebih dahulu.\n\n*Link Grup:* ${botSettings.groupInviteLink}\n\nSetelah bergabung, silakan coba lagi!`, { mentions: [m.sender] });
             } catch (e) {
-                console.error('Error in Join Group Check:', e);
+                console.error('Join Group Check failed:', e.message);
             }
         }
 
-        logger.debug(`usedPrefix: ${usedPrefix} | body: ${m.body} | total commands: ${commands.size}`, 'HANDLER');
-
         if (usedPrefix) {
-            if (m.isGroup && !m.metadata?.subject) {
-                try {
-                    m.metadata = await refreshGroupMetadata(sock, m.chat);
-                } catch {}
-            }
-
             const cmdName = m.body.slice(usedPrefix.length).trim().split(/\s+/)[0].toLowerCase();
             const command = commands.get(cmdName) || [...commands.values()].find((c) => c.aliases?.includes(cmdName));
-            logger.debug(`cmdName: ${cmdName} | found: ${!!command}`, 'HANDLER');
 
             if (command) {
-                logger.command({
-                    phase: 'RUN',
-                    name: cmdName,
-                    sender: m.sender,
-                    chat: m.isGroup ? (m.metadata?.subject || m.chat) : m.chat,
-                    extra: `mode=${botSettings.mode}`,
-                });
-                logger.debug(`Executing command: ${cmdName} | Mode: ${botSettings.mode} | isOwner: ${isOwner}`, 'HANDLER');
-                if (botSettings.mode === 'self' && !isOwner) {
-                    logger.debug(`Ignored: Self mode and not owner`, 'HANDLER');
-                    return;
-                }
-                if (botSettings.mode === 'group' && !m.isGroup && !isOwner) {
-                    logger.debug(`Ignored: Group mode and not in group`, 'HANDLER');
-                    return;
-                }
+                if (botSettings.mode === 'self' && !isOwner) return;
+                if (botSettings.mode === 'group' && !m.isGroup && !isOwner) return;
+                if (command.category === 'Owner' && !isOwner) return m.reply(' Akses Ditolak. Perintah ini hanya untuk Owner.');
 
-                if (command.category === 'Owner' && !isOwner) {
-                    logger.debug(`Command ${cmdName} rejected: Owner only`, 'HANDLER');
-                    return m.reply(' Akses Ditolak. Perintah ini hanya untuk Owner.');
-                }
-
-                await sock.sendPresenceUpdate('composing', m.chat).catch(() => {});
+                // Fire and forget presence
+                sock.sendPresenceUpdate('composing', m.chat).catch(() => {});
 
                 try {
-                    logger.debug(`Executing ${cmdName} for ${m.sender} (MsgID: ${m.id})`, 'HANDLER');
+                    logger.command({ phase: 'RUN', name: cmdName, sender: m.sender, chat: m.isGroup ? (m.metadata?.subject || m.chat) : m.chat, extra: `mode=${botSettings.mode}` });
                     await command.execute(sock, m, m.args, m.text);
-                    logger.command({
-                        phase: 'DONE',
-                        name: cmdName,
-                        sender: m.sender,
-                        chat: m.isGroup ? (m.metadata?.subject || m.chat) : m.chat,
-                    });
-                    logger.debug(`Command ${cmdName} execution finished`, 'HANDLER');
+                    logger.command({ phase: 'DONE', name: cmdName, sender: m.sender, chat: m.isGroup ? (m.metadata?.subject || m.chat) : m.chat });
                 } catch (err) {
-                    logger.command({
-                        phase: 'FAIL',
-                        name: cmdName,
-                        sender: m.sender,
-                        chat: m.isGroup ? (m.metadata?.subject || m.chat) : m.chat,
-                        extra: err.message,
-                    });
+                    logger.command({ phase: 'FAIL', name: cmdName, sender: m.sender, chat: m.isGroup ? (m.metadata?.subject || m.chat) : m.chat, extra: err.message });
                     logger.error(err, `Error in command: ${cmdName}`);
-                    const errorMsg = ` *COMMAND ERROR REPORT*\n\n` +
-                        `➛ *Command:* ${cmdName}\n` +
-                        `➛ *Sender:* @${m.sender.split('@')[0]}\n` +
-                        `➛ *Error:* ${err.message}\n\n` +
-                        `\`\`\`${err.stack}\`\`\``;
-                    await sock.sendMessage(ownerJid, { text: errorMsg, mentions: [m.sender] });
+                    
+                    const errorMsg = ` *COMMAND ERROR REPORT*\n\n➛ *Command:* ${cmdName}\n➛ *Sender:* @${m.sender.split('@')[0]}\n➛ *Error:* ${err.message}\n\n\`\`\`${err.stack}\`\`\``;
+                    await sock.sendMessage(ownerJid, { text: errorMsg, mentions: [m.sender] }).catch(() => {});
                     m.reply(` Terjadi kesalahan. Detail error telah dikirim ke Owner.`);
                 }
             }
