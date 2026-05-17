@@ -16,7 +16,7 @@ export default {
                 return m.reply(`Reply to an image, video, audio, sticker, or document with *${settings.prefix}tourl*`);
             }
 
-            await m.reply('Uploading media, please wait...');
+            await m.react('⏳');
 
             const buffer = await m.downloadMediaMessage(quoted);
             
@@ -54,17 +54,20 @@ export default {
                 if (typeof sock.sendInteractiveButtons === 'function') {
                     try {
                         await sock.sendInteractiveButtons(m.chat, payload, { quoted: m });
+                        await m.react('✅');
                         return;
                     } catch {}
                 }
 
                 await m.reply(caption);
+                await m.react('✅');
             } else {
                 throw new Error('Failed to get URL from response');
             }
 
         } catch (error) {
             console.error('Error in tourl command:', error);
+            await m.react('❌');
             await m.reply(' Failed to upload media. Please try again later.');
         }
     }

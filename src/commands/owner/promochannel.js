@@ -13,11 +13,6 @@ export default {
         try {
             await sock.sendMessage(m.chat, {
                 text: text,
-                contextInfo: {
-                    // Ini kunci buat munculin label "Diteruskan"
-                    forwardingScore: 999,
-                    isForwarded: true
-                },
                 // Ini properti custom yang kita pasang di core tadi
                 newsletterForward: {
                     jid: newsJid,

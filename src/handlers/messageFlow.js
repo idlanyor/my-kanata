@@ -181,7 +181,7 @@ const handlePollUpdate = async (sock, m) => {
                         const pteroId = parts[1];
                         const force = parts.includes('FORCE');
 
-                        await sock.sendMessage(m.chat, { text: `⏳ Memproses penghapusan server ${pteroId}...` });
+                        await sock.sendMessage(m.chat, { react: { text: '⏳', key: m.key } });
 
                         try {
                             const PTERO_URL = process.env.PTERO_URL;
@@ -209,7 +209,9 @@ const handlePollUpdate = async (sock, m) => {
                             await sock.sendMessage(m.chat, {
                                 text: `✅ *SERVER BERHASIL DIHAPUS*\n\nID: ${pteroId}\nDB: ${deletedDb.deletedCount > 0 ? 'Terhapus' : 'Tidak di DB'}`
                             });
+                            await sock.sendMessage(m.chat, { react: { text: '✅', key: m.key } });
                         } catch (err) {
+                            await sock.sendMessage(m.chat, { react: { text: '❌', key: m.key } });
                             await sock.sendMessage(m.chat, { text: `❌ Gagal menghapus server: ${err.message}` });
                         }
                     } else {

@@ -13,11 +13,12 @@ export default {
         const target = args[0];
         if (!target) return m.reply('Masukkan username TikTok atau link profil!\nContoh: .ttscan @soffymedicallambulnce21');
 
-        await m.reply('Bentar ya, lagi proses scan profile... (biasanya 10-20 detik)');
+        await m.react('⏳');
 
         const videos = await getTikTokProfileVideos(target);
 
         if (videos.length === 0) {
+            await m.react('❌');
             return m.reply('Gagal mendapatkan video. Pastikan akun tidak privat atau coba lagi nanti.');
         }
 
@@ -28,5 +29,6 @@ export default {
         resMsg += videos.join('\n');
 
         await m.reply(resMsg);
+        await m.react('✅');
     }
 };

@@ -26,7 +26,7 @@ export default {
                 return m.reply(`Example: ${settings.prefix}smeme hello.world`);
             }
 
-            await m.reply('Processing smeme...');
+            await m.react('⏳');
 
             // Download media
             const mediaType = /sticker/.test(mime) || /stickerMessage/.test(mtype) ? 'sticker' : 'image';
@@ -80,9 +80,11 @@ export default {
 
             const stickerBuffer = await sticker.toBuffer();
             await sock.sendMessage(m.chat, { sticker: stickerBuffer }, { quoted: m });
+            await m.react('✅');
 
         } catch (error) {
             console.error('Error creating smeme:', error);
+            await m.react('❌');
             await m.reply('Failed to create smeme. Make sure you follow the format: top.bottom');
         }
     }

@@ -1,5 +1,4 @@
 import { fetchAPI } from '../../lib/api.js';
-import { adContext } from '../../lib/adReply.js';
 import logger from '../../lib/logger.js';
 
 export default {
@@ -10,30 +9,28 @@ export default {
 
     execute: async (sock, m, args, text) => {
         if (!text) return m.reply('Please provide an Instagram URL.');
-        await m.reply('Processing...');
+        await m.react('⏳');
         
         try {
             const data = await fetchAPI('/instagram/fetch', { url: text });
-            if (!data || data.status !== 'success' || !data.results?.length) return m.reply('Gagal mengambil data.');
-
-            const ctx = await adContext({ 
-                title: 'INSTAGRAM DOWNLOADER', 
-                body: data.results[0]?.author || 'Instagram Media', 
-                thumbnail: data.results[0]?.thumbnail 
-            });
+            if (!data || data.status !== 'success' || !data.results?.length) {
+                await m.react('❌');
+                return m.reply('Gagal mengambil data.');
+            }
 
             for (const result of data.results) {
                 for (const media of result.medias) {
                     const mediaType = media.extension === 'mp4' ? 'video' : 'image';
-                    sock.sendMessage(m.chat, { 
+                    await sock.sendMessage(m.chat, { 
                         [mediaType]: { url: media.url },
-                        caption: `✅ *Instagram Media Downloaded*`,
-                        contextInfo: ctx
-                    }, { quoted: m }).catch(err => logger.error(err, 'IG Send Error'));
+                        caption: `✅ *Instagram Media Downloaded*`
+                    }, { quoted: m });
                 }
             }
+            await m.react('✅');
         } catch (err) {
-            console.error(err);
+            logger.error(err, 'IG Send Error');
+            await m.react('❌');
             await m.reply('An error occurred while processing your request.');
         }
     }

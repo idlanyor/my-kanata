@@ -73,7 +73,7 @@ export default {
         };
 
         try {
-            await m.reply('⏳ Generating invoice, please wait...');
+            await m.react('⏳');
             
             const apiKey = process.env.INVOICE_API_KEY;
             const pdfBuffer = await generateInvoice(invoiceData, apiKey);
@@ -84,10 +84,12 @@ export default {
                 fileName: `Invoice-${invoiceNumber}.pdf`,
                 caption: `✅ *Invoice Created!*`
             }, { quoted: m });
+            await m.react('✅');
             
         } catch (error) {
             console.error('Invoice Error:', error);
-            m.reply(`❌ Failed to generate invoice: ${error.message}`);
+            await m.react('❌');
+            await m.reply(`❌ Failed to generate invoice: ${error.message}`);
         }
     }
 };

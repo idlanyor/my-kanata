@@ -9,7 +9,7 @@ export default {
     category: 'Sticker',
     execute: async (sock, m, args, text) => {
         try {
-            await m.reply('Processing sticker...');
+            await m.react('⏳');
             let buffer;
             let isAnimatedSource = false;
 
@@ -22,6 +22,7 @@ export default {
                 if (isTwitterUrl) {
                     const data = await scrapeTwitter(originalUrl);
                     if (!data || !Array.isArray(data.medias) || data.medias.length === 0) {
+                        await m.react('❌');
                         return m.reply('Gagal mengambil media dari link Twitter/X.');
                     }
                     mediaUrl = data.medias[0].url;
@@ -41,6 +42,7 @@ export default {
                 const isAnimatedUrlByExt = /\.(mp4|webm|mkv|mov)($|\?)/.test(urlLower);
 
                 if (!isImageUrl && !isVideoUrl && !isGifUrl && !isAnimatedUrlByExt) {
+                    await m.react('❌');
                     return m.reply('URL harus mengarah ke media gambar/video/gif yang valid.');
                 }
 
@@ -56,12 +58,14 @@ export default {
                 isAnimatedSource = target.isVideo || isGifDocument || isVideoDocument || isAnimatedDocumentByExt;
 
                 if (!target.isImage && !isAnimatedSource) {
+                    await m.react('❌');
                     return m.reply('Kirim/balas gambar-video-gif, atau pakai `.s <url>`');
                 }
 
                 if (isAnimatedSource) {
                     const duration = Number(target.seconds || target?.msg?.seconds || 0);
                     if (duration > 10) {
+                        await m.react('❌');
                         return m.reply(`Durasi video terlalu panjang (${duration}s). Maksimal 10 detik.`);
                     }
                 }
@@ -81,8 +85,10 @@ export default {
 
             const stickerBuffer = await sticker.toBuffer();
             await sock.sendMessage(m.chat, { sticker: stickerBuffer }, { quoted: m });
+            await m.react('✅');
         } catch (err) {
             console.error(`[DEBUG] Sticker command failed:`, err);
+            await m.react('❌');
             await m.reply('Gagal membuat sticker dari media tersebut.');
         }
     }

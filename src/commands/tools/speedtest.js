@@ -131,17 +131,20 @@ export default {
     description: 'Tes kecepatan internet server bot.',
     category: 'Tools',
     execute: async (sock, m) => {
-        await m.reply('Sedang menjalankan speedtest server. Proses ini bisa makan waktu 20-60 detik...');
+        await m.react('⏳');
 
         try {
             const cliResult = await runCliSpeedtest();
             await sock.sendMessage(m.chat, { text: buildMessage(cliResult) }, { quoted: m });
+            await m.react('✅');
         } catch (cliError) {
             try {
                 const fallbackResult = await runFallbackSpeedtest();
                 await sock.sendMessage(m.chat, { text: buildMessage(fallbackResult, true) }, { quoted: m });
+                await m.react('✅');
             } catch (fallbackError) {
                 console.error('Speedtest failed:', { cliError: cliError.message, fallbackError: fallbackError.message });
+                await m.react('❌');
                 await m.reply(`Speedtest gagal dijalankan.\n\nCLI: ${cliError.message}\nFallback: ${fallbackError.message}`);
             }
         }

@@ -101,7 +101,7 @@ export default {
             );
         }
 
-        await m.reply('Sedang mencari lirik...');
+        await m.react('⏳');
 
         try {
             const input = parseInput(rawInput);
@@ -127,11 +127,13 @@ export default {
             }
 
             if (!song) {
+                await m.react('❌');
                 return m.reply(`Lirik tidak ditemukan untuk: ${rawInput}`);
             }
 
             const lyrics = song.plainLyrics || song.syncedLyrics;
             if (!lyrics) {
+                await m.react('❌');
                 return m.reply('Data lagu ditemukan, tapi lirik belum tersedia di LRCLIB.');
             }
 
@@ -144,17 +146,21 @@ export default {
                 const prefix = lyricChunks.length > 1 ? `*LIRIK (${index + 1}/${lyricChunks.length})*\n\n` : '*LIRIK*\n\n';
                 await m.reply(prefix + lyricChunks[index]);
             }
+            await m.react('✅');
         } catch (error) {
             console.error('Lirik command error:', error.response?.data || error.message);
 
             if (error.response?.status === 404) {
+                await m.react('❌');
                 return m.reply(`Lirik tidak ditemukan untuk: ${rawInput}`);
             }
 
             if (error.response?.status === 429) {
+                await m.react('❌');
                 return m.reply('LRCLIB sedang membatasi request. Coba lagi beberapa saat.');
             }
 
+            await m.react('❌');
             return m.reply(`Gagal mencari lirik: ${error.message}`);
         }
     }

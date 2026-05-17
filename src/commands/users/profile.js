@@ -28,7 +28,7 @@ export default {
                     return m.reply(`Usage: ${settings.prefix}profile edit <field> <value>\nFields: ${allowedFields.join(', ')}`);
                 }
 
-                await m.reply(`Mengupdate profile...`);
+                await m.react('⏳');
                 
                 const updateData = {
                     email: pteroUser.email,
@@ -39,6 +39,7 @@ export default {
                 };
 
                 await updatePteroProfile(pteroUser.id, updateData);
+                await m.react('✅');
                 return m.reply(`Berhasil! Field *${field}* telah diubah menjadi: ${value}`);
             }
 

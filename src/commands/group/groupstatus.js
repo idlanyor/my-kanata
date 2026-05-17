@@ -37,7 +37,7 @@ export default {
                 content = { video: buffer, caption: cap };
             } else if (/audio/.test(mime)) {
                 const buffer = await quoted.download();
-                await m.reply('Processing audio status...');
+                await m.react('⏳');
                 const audioVn = await toVN(buffer);
                 content = {
                     audio: audioVn,
@@ -63,17 +63,19 @@ export default {
 
             if (!content) return m.reply('⚠️ Reply media atau kirim teks!');
 
-            await m.reply('🚀 Uploading status...');
+            await m.react('⏳');
 
             await sock.sendMessage(id, {
                 groupStatusMessage: content
             });
             
             await m.reply('✅ Dah UpStatus Nya Tengok Di Grup');
+            await m.react('✅');
 
         } catch (err) {
             console.error('GroupStatus Error:', err);
-            m.reply(`❌ Gagal: ${err.message}`);
+            await m.react('❌');
+            await m.reply(`❌ Gagal: ${err.message}`);
         }
     }
 };

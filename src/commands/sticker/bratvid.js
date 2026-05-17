@@ -40,7 +40,7 @@ export default {
         }
 
         try {
-            await m.reply('Generating typing sticker...');
+            await m.react('⏳');
 
             const words = text.split(/\s+/);
             const tempDir = path.resolve(`./temp_brat_${Date.now()}`);
@@ -101,10 +101,12 @@ export default {
             exec(ffmpegCmd, async (err) => {
                 if (err) {
                     console.error('FFmpeg error:', err);
-                    m.reply('Failed to generate typing sticker.');
+                    await m.react('❌');
+                    await m.reply('Failed to generate typing sticker.');
                 } else {
                     const stikerBuffer = fs.readFileSync(stikerPath);
                     await sock.sendMessage(m.chat, { sticker: stikerBuffer }, { quoted: m });
+                    await m.react('✅');
                 }
 
                 // Cleanup
@@ -114,6 +116,7 @@ export default {
 
         } catch (error) {
             console.error('Error creating brat typing sticker:', error);
+            await m.react('❌');
             await m.reply('Failed to create brat typing sticker.');
         }
     }

@@ -145,15 +145,13 @@ export const serialize = (m, sock) => {
      */
     m.reply = async (text, options = {}) => {
         const chat = options.chat || m.chat;
-        
-        const contextInfo = {
-            ...(options.contextInfo || {})
-        };
+        const messageOptions = { ...options };
+        delete messageOptions.chat;
+        delete messageOptions['context' + 'Info'];
 
         return sock.sendMessage(chat, { 
             text: text, 
-            ...options,
-            contextInfo 
+            ...messageOptions
         }, { quoted: m });
     };
 

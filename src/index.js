@@ -13,6 +13,7 @@ import { registerRecurringTasks, registerSocketEvents } from './lib/botRuntime.j
 import { jadibotService } from './lib/jadibotService.js';
 import { attachGroupStatusCompat } from './lib/groupStatusCompat.js';
 import { attachListMessageCompat } from './lib/listMessageCompat.js';
+import { attachGroupMetadataPatch } from './lib/groupMetadataPatch.js';
 import { sanitizeAuthFolder, wrapSignalKeyStoreWithSanitizer } from './lib/authStateSanitizer.js';
 
 const authFolder = 'auth_info_baileys';
@@ -157,6 +158,7 @@ const startBot = async () => {
 
     attachGroupStatusCompat(sock);
     attachListMessageCompat(sock);
+    attachGroupMetadataPatch(sock);
 
     activeSocket = sock;
     registerRecurringTasks(sock);

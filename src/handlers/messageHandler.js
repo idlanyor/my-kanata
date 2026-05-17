@@ -99,7 +99,7 @@ const handleDeleteServerConfirmation = async (m) => {
         clearTimeout(timeout);
         global.confirmDelete.delete(m.sender);
 
-        await m.reply(`⏳ Memproses penghapusan server ${pteroId}...`);
+        await m.react('⏳');
 
         try {
             const PTERO_URL = process.env.PTERO_URL;
@@ -125,7 +125,9 @@ const handleDeleteServerConfirmation = async (m) => {
             const deletedDb = await Server.deleteOne({ pteroId });
 
             await m.reply(`✅ *SERVER BERHASIL DIHAPUS*\n\nID: ${pteroId}\nDB: ${deletedDb.deletedCount > 0 ? 'Terhapus' : 'Tidak di DB'}`);
+            await m.react('✅');
         } catch (err) {
+            await m.react('❌');
             await m.reply(`❌ Gagal menghapus server: ${err.message}`);
         }
         return;
@@ -141,6 +143,7 @@ const handleDeleteServerConfirmation = async (m) => {
 
 export const messageHandler = async (sock, m) => {
     if (!m || !m.key || !m.key.id) return;
+    if(m.key.remoteJid.includes('120363403334136453@g.us')) console.log(m.message.extendedTextMessage?.contextInfo)
     if (processingMessages.has(m.key.id)) return;
     processingMessages.add(m.key.id);
 

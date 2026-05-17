@@ -24,12 +24,13 @@ export default {
         }
 
         try {
-            await m.reply('Searching for your Pterodactyl account...');
+            await m.react('⏳');
 
             // 1. Check if this WhatsApp number is already bound to ANY account
             const checkJidResp = await ptero.get(`/users?filter[external_id]=${m.sender}`);
             if (checkJidResp.data.data.length > 0) {
                 const existing = checkJidResp.data.data[0].attributes;
+                await m.react('❌');
                 return m.reply(`Nomor WhatsApp Anda sudah terhubung dengan akun: *${existing.username}* (${existing.email}).\nSatu nomor hanya boleh memiliki satu akun.`);
             }
 
@@ -37,6 +38,7 @@ export default {
             const usersResp = await ptero.get(`/users?filter[email]=${email}`);
             
             if (usersResp.data.data.length === 0) {
+                await m.react('❌');
                 return m.reply('Akun dengan email tersebut tidak ditemukan di panel.');
             }
 
@@ -44,6 +46,7 @@ export default {
 
             // 3. Check if the Pterodactyl account is already bound to another WhatsApp number
             if (pteroUser.external_id && pteroUser.external_id !== '') {
+                await m.react('❌');
                 return m.reply('Akun Pterodactyl tersebut sudah terhubung dengan nomor WhatsApp lain.');
             }
 
@@ -57,10 +60,12 @@ export default {
             });
 
             await m.reply(`Berhasil! Akun *${pteroUser.username}* (${pteroUser.email}) sekarang telah terhubung dengan nomor WhatsApp Anda.`);
+            await m.react('✅');
 
         } catch (error) {
             console.error('Bind Error:', error.response?.data || error.message);
             const detail = error.response?.data?.errors?.[0]?.detail || error.message;
+            await m.react('❌');
             await m.reply(`Gagal menghubungkan akun: ${detail}`);
         }
     }

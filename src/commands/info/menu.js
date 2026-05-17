@@ -2,7 +2,6 @@ import { commands } from '../../lib/commands.js';
 import { toFancy } from '../../lib/font.js';
 import { settings } from '../../config/settings.js';
 import Settings from '../../database/models/Settings.js';
-import fs from 'fs';
 
 // Category mapping for better organization
 const categoryOrder = [
@@ -63,7 +62,6 @@ export default {
         };
 
         const weton = getWeton();
-        const thumbBuffer = fs.existsSync('./maskot.jpeg') ? fs.readFileSync('./maskot.jpeg') : null;
         const inputCategory = args[0]?.toLowerCase();
 
         // ═══════════════════════════════════════════
@@ -100,17 +98,7 @@ ${toFancy('━━━━━━━━━━━━━━━━━━━━━━━
 
             return sock.sendMessage(m.chat, {
                 text: menuText,
-                mentions: [m.sender],
-                contextInfo: {
-                    externalAdReply: {
-                        title: toFancy(settings.botName + ' v1.0'),
-                        body: toFancy('The most advanced Multimodal AI Bot'),
-                        mediaType: 1,
-                        renderLargerThumbnail: true,
-                        thumbnail: thumbBuffer,
-                        sourceUrl: 'https://api.kanata.web.id'
-                    }
-                }
+                mentions: [m.sender]
             }, { quoted: m });
         }
 
@@ -140,17 +128,7 @@ ${toFancy('━━━━━━━━━━━━━━━━━━━━━━━
 ${toFancy('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')}`;
 
         await sock.sendMessage(m.chat, {
-            text: menuText,
-            contextInfo: {
-                externalAdReply: {
-                    title: toFancy('Category: ' + selectedCat),
-                    body: toFancy('Total ' + categories[selectedCat].length + ' commands'),
-                    mediaType: 1,
-                    renderLargerThumbnail: false,
-                    thumbnail: thumbBuffer,
-                    sourceUrl: 'https://api.kanata.web.id'
-                }
-            }
+            text: menuText
         }, { quoted: m });
     }
 };

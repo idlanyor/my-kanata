@@ -9,10 +9,11 @@ export default {
     category: 'Panel',
     execute: async (sock, m, args, text) => {
         try {
-            await m.reply('Fetching your servers...');
+            await m.react('⏳');
             const servers = await getUserServers(m.sender);
 
             if (servers.length === 0) {
+                await m.react('❌');
                 return m.reply(`You don't have any servers yet or your account is not linked. Use ${settings.prefix}bind if you already have an account.`);
             }
 
@@ -36,8 +37,10 @@ export default {
             msg += `\nTo manage a server, use: ${settings.prefix}panel <identifier> <action>\nActions: start, stop, restart, status`;
             
             await m.reply(msg);
+            await m.react('✅');
         } catch (error) {
             console.error(error);
+            await m.react('❌');
             await m.reply(`Error: ${error.message}`);
         }
     }

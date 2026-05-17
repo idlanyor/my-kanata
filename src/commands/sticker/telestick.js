@@ -30,7 +30,7 @@ export default {
     execute: async (sock, m, args, text) => {
         if (!text) return m.reply(`Usage: ${settings.prefix}telestick <telegram_url>`);
 
-        await m.reply('Downloading stickers... (limit 10)');
+        await m.react('⏳');
 
         try {
             const data = await fetchTeleStickers(text);
@@ -53,9 +53,11 @@ export default {
             }
 
             await m.reply(`Successfully sent ${data.stickers.length} stickers from pack: ${data.title}`);
+            await m.react('✅');
 
         } catch (error) {
             console.error('TeleStick Error:', error);
+            await m.react('❌');
             await m.reply(`Error: ${error.message}`);
         }
     }

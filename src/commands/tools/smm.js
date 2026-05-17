@@ -15,11 +15,17 @@ export default {
         const subCommand = args[0]?.toLowerCase();
 
         if (subCommand === 'list' || !subCommand) {
-            await m.reply('Bentar ya, lagi ngambil pricelist terbaru...');
+            await m.react('⏳');
             const services = await smm.getServices();
             
-            if (services.error) return m.reply(`❌ Error: ${services.error}`);
-            if (services.length === 0) return m.reply('⚠️ Tidak ada layanan Instagram/TikTok yang ditemukan.');
+            if (services.error) {
+                await m.react('❌');
+                return m.reply(`❌ Error: ${services.error}`);
+            }
+            if (services.length === 0) {
+                await m.react('❌');
+                return m.reply('⚠️ Tidak ada layanan Instagram/TikTok yang ditemukan.');
+            }
 
             let response = `*── 「 SMM STORE MENU 」 ──*\n\n`;
             response += `_Harga sudah termasuk markup Rp 2.000_\n\n`;
@@ -50,6 +56,7 @@ export default {
             });
 
             response += `*Format Order:*\n.smm order <ID> <Link> <Jumlah>\n\n_Contoh: .smm order 6035 https://ig.com/p/xxx 1000_`;
+            await m.react('✅');
             return m.reply(response);
         }
 
@@ -74,11 +81,12 @@ export default {
 
             const totalPrice = Math.ceil((service.price / 1000) * quantity);
 
-            await m.reply(`Processing order for ${quantity} ${service.name}...\nTotal Estimasi: Rp ${totalPrice.toLocaleString('id-ID')}`);
+            await m.react('⏳');
 
             const order = await smm.placeOrder(serviceId, target, quantity);
 
             if (order.error) {
+                await m.react('❌');
                 return m.reply(`❌ Gagal Order: ${order.error}`);
             }
 
@@ -105,8 +113,10 @@ export default {
                 resMsg += `➛ *Quantity:* ${quantity}\n\n`;
                 resMsg += `Gunakan \`.smm status ${order.order}\` untuk cek status.`;
                 
+                await m.react('✅');
                 return m.reply(resMsg);
             } else {
+                await m.react('❌');
                 return m.reply(`Failed to place order: ${JSON.stringify(order)}`);
             }
         }

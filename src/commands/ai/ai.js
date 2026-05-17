@@ -31,7 +31,7 @@ export default {
 
             if (isImage || isVideo || isAudio) {
                 const mediaType = isImage ? 'image' : (isVideo ? 'video' : 'audio');
-                await m.reply(`Uploading ${mediaType} to Gemini...`);
+                await m.react('⏳');
                 
                 const stream = await downloadContentFromMessage(msg, mediaType);
                 let buffer = Buffer.from([]);
@@ -63,12 +63,13 @@ Question: ${prompt}` : m.quoted.text;
                 return m.reply(`Usage: ${settings.prefix}ai <question> (reply to media for multimodal)`);
             }
 
-            if (!fileUri) await m.reply('Thinking...');
+            if (!fileUri) await m.react('⏳');
 
             // Call generateAIResponse with m.chat for history
             const response = await generateAIResponse(prompt, fileUri, fileMime, null, m.chat);
             
             await m.reply(response);
+            await m.react('✅');
 
             // Cleanup
             if (tempPath && fs.existsSync(tempPath)) {
@@ -77,6 +78,7 @@ Question: ${prompt}` : m.quoted.text;
 
         } catch (error) {
             console.error('Gemini API Error:', error);
+            await m.react('❌');
             await m.reply(`Error: ${error.message || 'Failed to process request'}`);
         }
     }

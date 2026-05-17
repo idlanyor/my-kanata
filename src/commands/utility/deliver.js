@@ -100,7 +100,7 @@ ${settings.prefix}deliver VPS Debian 13 KVM | 100000 | 158.69.207.97 | root | my
         };
 
         try {
-            await m.reply('Processing order document...');
+            await m.react('⏳');
             
             const apiKey = process.env.INVOICE_API_KEY;
             const pdfBuffer = await generateInvoice(invoiceData, apiKey);
@@ -111,10 +111,12 @@ ${settings.prefix}deliver VPS Debian 13 KVM | 100000 | 158.69.207.97 | root | my
                 fileName: `${orderId}.pdf`,
                 caption: `Order completed. Check the attached document for access details.`
             }, { quoted: m });
+            await m.react('✅');
             
         } catch (error) {
             console.error('Delivery Error:', error);
-            m.reply(`Failed to create document: ${error.message}`);
+            await m.react('❌');
+            await m.reply(`Failed to create document: ${error.message}`);
         }
     }
 };

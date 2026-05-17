@@ -201,7 +201,7 @@ Gunakan ${settings.prefix}alice plans untuk melihat plan_id\nGunakan ${settings.
         return;
     }
 
-    await m.reply(' Sedang membuat VPS, mohon tunggu...');
+    await m.react('⏳');
 
     const response = await aliceApi.post('/evo/instances/deploy', {
         product_id: parseInt(planId),
@@ -228,6 +228,7 @@ Gunakan ${settings.prefix}alice plans untuk melihat plan_id\nGunakan ${settings.
 ssh ${vps.user}@${vps.ipv4}\n`;
 
     await m.reply(text);
+    await m.react('✅');
 }
 
 async function handleList(sock, m) {
@@ -351,4 +352,3 @@ async function handleProfile(sock, m) {
 
     await m.reply(text);
 }
-

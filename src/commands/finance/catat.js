@@ -20,7 +20,7 @@ export default {
 
             if (isAudio || isImage) {
                 const mediaType = isAudio ? 'audio' : 'image';
-                await m.reply(`Sedang menganalisis ${mediaType === 'audio' ? 'suara' : 'gambar'} kamu...`);
+                await m.react('⏳');
                 const stream = await downloadContentFromMessage(msg, mediaType);
                 let buffer = Buffer.from([]);
                 for await (const chunk of stream) buffer = Buffer.concat([buffer, chunk]);
@@ -38,6 +38,7 @@ export default {
             const result = await processAiTransaction(m.sender, m.pushName || 'User', prompt, fileData);
 
             if (result.error) {
+                await m.react('❌');
                 return m.reply(result.error);
             }
 
@@ -54,9 +55,11 @@ export default {
             }
 
             await m.reply(responseMsg.trim());
+            await m.react('✅');
 
         } catch (error) {
             console.error('Catat Error:', error);
+            await m.react('❌');
             await m.reply(`Gagal mencatat transaksi: ${error.message}`);
         }
     }

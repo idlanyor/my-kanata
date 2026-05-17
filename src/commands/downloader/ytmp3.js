@@ -9,7 +9,7 @@ export default {
         if (!text) return m.reply('Please provide a YouTube URL.');
         
         // console.log(`[DEBUG] ytmp3 triggered for URL: ${text}`);
-        await m.reply('Processing your request...');
+        await m.react('⏳');
         
         try {
             // console.log(`[DEBUG] Fetching audio API for: ${text}`);
@@ -17,6 +17,7 @@ export default {
             
             if (!data || typeof data.url !== 'string') {
                 // console.log(`[DEBUG] ytmp3 API Failure:`, data);
+                await m.react('❌');
                 return m.reply('Failed to fetch YouTube audio. Make sure the URL is valid.');
             }
 
@@ -26,10 +27,12 @@ export default {
                 mimetype: 'audio/mpeg',
                 fileName: `${data.title || 'audio'}.mp3`
             }, { quoted: m });
+            await m.react('✅');
             
             // console.log(`[DEBUG] ytmp3 sent successfully`);
         } catch (err) {
             console.error(`[DEBUG] ytmp3 error:`, err);
+            await m.react('❌');
             await m.reply(' An error occurred while fetching the audio.');
         }
     }

@@ -13,14 +13,20 @@ export default {
         const domain = args[0];
         if (!domain) return m.reply(`Usage: ${settings.prefix}listdns <domain>\nExample: ${settings.prefix}listdns kanata.web.id`);
 
-        await m.reply(`Fetching DNS records for ${domain}...`);
+        await m.react('⏳');
 
         try {
             const zoneId = await getZoneId(domain);
-            if (!zoneId) return m.reply(`Error: Domain ${domain} not found in your Cloudflare account.`);
+            if (!zoneId) {
+                await m.react('❌');
+                return m.reply(`Error: Domain ${domain} not found in your Cloudflare account.`);
+            }
 
             const records = await listDnsRecords(zoneId);
-            if (records.length === 0) return m.reply(`No DNS records found for ${domain}.`);
+            if (records.length === 0) {
+                await m.react('❌');
+                return m.reply(`No DNS records found for ${domain}.`);
+            }
 
             let msg = `DNS Records for ${domain}\n\n`;
             records.forEach((r, i) => {
@@ -30,7 +36,9 @@ export default {
             });
 
             await m.reply(msg);
+            await m.react('✅');
         } catch (error) {
+            await m.react('❌');
             await m.reply(`Error: ${error.message}`);
         }
     }

@@ -23,7 +23,7 @@ export default {
             }
         }
 
-        await m.reply(` Sending POST to: ${url}...`);
+        await m.react('⏳');
 
         try {
             const response = await axios.post(url, body, {
@@ -63,9 +63,11 @@ export default {
                      caption: `Status: ${response.status} ${response.statusText}`
                  }, { quoted: m });
             }
+            await m.react('✅');
 
         } catch (err) {
             console.error(`[DEBUG] POST request failed:`, err.message);
+            await m.react('❌');
             await m.reply(` *Error:* ${err.message}`);
         }
     }

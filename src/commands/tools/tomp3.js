@@ -20,11 +20,14 @@ export default {
             return m.reply(' Reply video atau audio yang ingin dijadikan MP3.');
         }
 
-        await m.reply('⏳ Sedang memproses ke MP3...');
+        await m.react('⏳');
 
         try {
             const buffer = await quoted.download();
-            if (!buffer) return m.reply('❌ Gagal mengunduh media.');
+            if (!buffer) {
+                await m.react('❌');
+                return m.reply('❌ Gagal mengunduh media.');
+            }
 
             const inputFileName = `input_${Date.now()}_${Math.floor(Math.random() * 1000)}` + (isVideo ? '.mp4' : '.ogg');
             const outputFileName = `output_${Date.now()}_${Math.floor(Math.random() * 1000)}.mp3`;
@@ -51,13 +54,15 @@ export default {
                 // Cleanup
                 await fs.promises.unlink(inputFilePath).catch(() => {});
                 await fs.promises.unlink(outputFilePath).catch(() => {});
+                await m.react('✅');
             } else {
                 throw new Error('Output file not generated');
             }
 
         } catch (error) {
             console.error('ToMP3 Error:', error);
-            m.reply(`❌ Gagal mengekstrak audio: ${error.message}`);
+            await m.react('❌');
+            await m.reply(`❌ Gagal mengekstrak audio: ${error.message}`);
         }
     }
 };

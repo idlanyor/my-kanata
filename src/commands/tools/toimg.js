@@ -29,9 +29,10 @@ export default {
                 return m.reply(`Reply to a sticker with *${settings.prefix}toimg*`);
             }
 
-            await m.reply('Converting...');
+            await m.react('⏳');
             const buffer = await target.download();
             if (!buffer?.length) {
+                await m.react('❌');
                 return m.reply('Failed to download sticker media.');
             }
 
@@ -54,12 +55,14 @@ export default {
                         { image: pngBuffer, caption: 'Converted sticker to image' },
                         { quoted: m }
                     );
+                    await m.react('✅');
                     return;
                 }
                 throw ffmpegError;
             }
 
             if (!fs.existsSync(outPath)) {
+                await m.react('❌');
                 return m.reply('Failed to convert sticker.');
             }
 
@@ -77,9 +80,11 @@ export default {
                     { quoted: m }
                 );
             }
+            await m.react('✅');
 
         } catch (error) {
             console.error(error);
+            await m.react('❌');
             await m.reply('Failed to convert sticker.');
         } finally {
             if (inputPath && fs.existsSync(inputPath)) fs.unlinkSync(inputPath);

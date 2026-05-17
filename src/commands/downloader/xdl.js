@@ -13,12 +13,13 @@ export default {
             return m.reply('Invalid URL. Please send a valid Twitter/X link.');
         }
 
-        await m.reply('Processing your request...');
+        await m.react('⏳');
 
         try {
             const data = await scrapeTwitter(text);
 
             if (!data || !Array.isArray(data.medias) || data.medias.length === 0) {
+                await m.react('❌');
                 return m.reply('Failed to fetch Twitter/X video.');
             }
 
@@ -36,8 +37,10 @@ export default {
                 },
                 { quoted: m }
             );
+            await m.react('✅');
         } catch (err) {
             console.error(err);
+            await m.react('❌');
             await m.reply('An error occurred while fetching Twitter/X video.');
         }
     }

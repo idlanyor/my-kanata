@@ -1,6 +1,5 @@
 import { jidNormalizedUser } from 'baileys';
 import { getGroupSettings } from './messageFlow.js';
-import { adContext } from '../lib/adReply.js';
 import logger from '../lib/logger.js';
 
 export const groupParticipantsUpdate = async (sock, { id, participants, action }) => {
@@ -39,17 +38,9 @@ export const groupParticipantsUpdate = async (sock, { id, participants, action }
                     .replace(/@group/g, groupData.name || 'this group')
                     .replace(/@desc/g, groupDesc);
 
-                const ctx = await adContext({
-                    title: `WELCOME TO ${groupData.name}`,
-                    body: `Hello ${userTag}!`,
-                });
-
                 await sock.sendMessage(id, {
                     text: message,
-                    contextInfo: {
-                        ...ctx.contextInfo,
-                        mentionedJid: [userJid]
-                    }
+                    mentions: [userJid]
                 });
             } else if (action === 'remove' && groupData.left) {
                 const message = groupData.leaveMsg
@@ -59,9 +50,7 @@ export const groupParticipantsUpdate = async (sock, { id, participants, action }
 
                 await sock.sendMessage(id, {
                     text: message,
-                    contextInfo: {
-                        mentionedJid: [userJid]
-                    }
+                    mentions: [userJid]
                 });
             }
         }

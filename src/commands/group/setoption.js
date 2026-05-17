@@ -30,26 +30,8 @@ export default {
             });
             status += `\n*Cara pakai:* .setoption <nama_opsi>\nContoh: .setoption antilink`;
 
-            const ppUrl = await sock.profilePictureUrl(m.chat, 'image').catch(() => null);
-            
             return sock.sendMessage(m.chat, {
-                text: status,
-                contextInfo: {
-                    externalAdReply: {
-                        title: `SETTINGS: ${groupMetadata.subject}`,
-                        body: 'Group Feature Configuration',
-                        mediaType: 1,
-                        thumbnailUrl: ppUrl,
-                        sourceUrl: 'https://api.kanata.web.id',
-                        renderLargerThumbnail: true
-                    },
-                    // --- FAKE QUOTE VERIFIED ---
-                    stanzaId: 'VERIFIED',
-                    participant: '0@s.whatsapp.net',
-                    quotedMessage: {
-                        conversation: 'Kanata Bot Official'
-                    }
-                }
+                text: status
             }, { quoted: m });
         }
 
@@ -67,25 +49,8 @@ export default {
             
             clearSettingsCache();
 
-            const ppUrl = await sock.profilePictureUrl(m.chat, 'image').catch(() => null);
-
             await sock.sendMessage(m.chat, {
-                text: ` Berhasil ${newStatus ? 'MENGAKTIFKAN' : 'MENONAKTIFKAN'} fitur *${input.toUpperCase()}* di grup ini.`,
-                contextInfo: {
-                    externalAdReply: {
-                        title: `FEATURE UPDATED`,
-                        body: `${input.toUpperCase()} is now ${newStatus ? 'ON' : 'OFF'}`,
-                        mediaType: 1,
-                        thumbnailUrl: ppUrl,
-                        renderLargerThumbnail: false
-                    },
-                    // --- FAKE QUOTE VERIFIED ---
-                    stanzaId: 'VERIFIED',
-                    participant: '0@s.whatsapp.net',
-                    quotedMessage: {
-                        conversation: 'Kanata Bot Official'
-                    }
-                }
+                text: ` Berhasil ${newStatus ? 'MENGAKTIFKAN' : 'MENONAKTIFKAN'} fitur *${input.toUpperCase()}* di grup ini.`
             }, { quoted: m });
         } catch (err) {
             console.error(err);

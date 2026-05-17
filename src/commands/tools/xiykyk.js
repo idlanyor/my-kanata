@@ -127,17 +127,7 @@ export default {
                 document: { url },
                 fileName: `${(info.title || 'video').replace(/[^a-z0-9\s\-_\.]/gi, ' ').slice(0, 60)}.mp4`,
                 mimetype: 'video/mp4',
-                caption,
-                contextInfo: {
-                    externalAdReply: {
-                        title: 'Downloaded Video',
-                        body: 'Private command',
-                        thumbnailUrl: info.thumb ,
-                        sourceUrl: query,
-                        mediaType: 1,
-                        renderLargerThumbnail: true
-                    }
-                }
+                caption
             }, { quoted: m });
 
             await m.react('✅');

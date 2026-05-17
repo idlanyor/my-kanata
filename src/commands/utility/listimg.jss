@@ -54,18 +54,7 @@ export default {
         try {
             await sock.sendMessage(m.chat, {
                 interactive: interactiveMessage,
-                viewOnce: true,
-                contextInfo: {
-                    externalAdReply: {
-                        title: " KANATA NEWS",
-                        body: "Explore the new generation of WhatsApp Bot",
-                        mediaType: 1,
-                        previewType: 0,
-                        renderLargerThumbnail: true,
-                        thumbnail: fs.readFileSync('./maskot.jpeg'),
-                        sourceUrl: 'https://api.kanata.web.id'
-                    }
-                }
+                viewOnce: true
             }, { quoted: m });
             console.log(`[DEBUG] List image message with AdReply sent.`);
         } catch (err) {

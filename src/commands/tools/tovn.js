@@ -20,11 +20,14 @@ export default {
             return m.reply(' Reply audio atau video yang ingin dijadikan Voice Note (VN).');
         }
 
-        await m.reply('⏳ Sedang memproses ke VN...');
+        await m.react('⏳');
 
         try {
             const buffer = await quoted.download();
-            if (!buffer) return m.reply('❌ Gagal mengunduh media.');
+            if (!buffer) {
+                await m.react('❌');
+                return m.reply('❌ Gagal mengunduh media.');
+            }
 
             const inputFileName = `input_${Date.now()}` + (isAudio ? '.mp3' : '.mp4');
             const outputFileName = `output_${Date.now()}.opus`;
@@ -52,29 +55,21 @@ export default {
                     audio: audioBuffer, 
                     ptt: true, 
                     waveform: Buffer.from(waveform), 
-                    mimetype: 'audio/ogg; codecs=opus',
-                    contextInfo: {
-                        externalAdReply: {
-                            title: 'VOICE NOTE CONVERTER',
-                            body: 'Rhythmic Audio Spectrum (Sync)',
-                            mediaType: 1,
-                            renderLargerThumbnail: false,
-                            thumbnail: fs.existsSync('./maskot.jpeg') ? fs.readFileSync('./maskot.jpeg') : null,
-                            sourceUrl: 'https://api.kanata.web.id'
-                        }
-                    }
+                    mimetype: 'audio/ogg; codecs=opus'
                 }, { quoted: m });
 
                 // Cleanup
                 await fs.promises.unlink(inputFilePath).catch(() => {});
                 await fs.promises.unlink(outputFilePath).catch(() => {});
+                await m.react('✅');
             } else {
                 throw new Error('Output file not generated');
             }
 
         } catch (error) {
             console.error('ToVN Error:', error);
-            m.reply(`❌ Gagal mengonversi ke VN: ${error.message}`);
+            await m.react('❌');
+            await m.reply(`❌ Gagal mengonversi ke VN: ${error.message}`);
         }
     }
 };

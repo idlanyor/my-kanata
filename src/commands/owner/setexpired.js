@@ -46,7 +46,7 @@ export default {
 
         // Fitur 2: Sync Server dari Panel
         if (sub === 'sync') {
-            await m.reply('Sedang mensinkronisasi data server dari panel Pterodactyl...');
+            await m.react('⏳');
             try {
                 // Ambil semua server & user dari panel
                 const [serversResp, usersResp] = await Promise.all([
@@ -82,9 +82,11 @@ export default {
                     }
                 }
 
+                await m.react('✅');
                 return m.reply(`Selesai! Berhasil mensinkronisasi ${addedCount} server baru ke database bot.\n\nSekarang gunakan .setexpired list untuk melihat hasilnya.`);
             } catch (e) {
                 console.error(e);
+                await m.react('❌');
                 return m.reply(`Gagal sinkronisasi: ${e.message}`);
             }
         }
@@ -109,7 +111,7 @@ export default {
         if (isNaN(expiredDate.getTime())) return m.reply('Format tanggal tidak valid. Gunakan DDMMYY.');
 
         try {
-            await m.reply('Sedang memproses...');
+            await m.react('⏳');
             let srv = await Server.findOne({ $or: [{ pteroId: id }, { identifier: id }] });
 
             if (!srv) {
@@ -134,6 +136,7 @@ export default {
                         expiredAt: expiredDate
                     });
                 } else {
+                    await m.react('❌');
                     return m.reply('Server tidak ditemukan di panel.');
                 }
             } else {
@@ -143,7 +146,9 @@ export default {
             }
 
             await m.reply(`Berhasil! Server ${srv.planName} disetel expired hingga ${expiredDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}.`);
+            await m.react('✅');
         } catch (error) {
+            await m.react('❌');
             await m.reply(`Error: ${error.message}`);
         }
     }

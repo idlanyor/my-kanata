@@ -52,13 +52,15 @@ export default {
                 return m.reply('Invalid action. Use: start, stop, restart, status');
             }
 
-            await m.reply(`Sending ${signal} signal to server ${id}...`);
+            await m.react('⏳');
             await setServerPowerState(id, signal);
             await m.reply(`Success! Signal ${signal} has been sent to server *${server.name}*.`);
+            await m.react('✅');
 
         } catch (error) {
             console.error(error);
             const detail = error.response?.data?.errors?.[0]?.detail || error.message;
+            await m.react('❌');
             await m.reply(`Failed to manage server: ${detail}`);
         }
     }

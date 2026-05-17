@@ -47,7 +47,7 @@ You can also use flags:
             return m.reply('No code found to carbonize.');
         }
 
-        await m.reply('Generating Carbon image, please wait...');
+        await m.react('⏳');
 
         try {
             const buffer = await post('/carbon', {
@@ -65,22 +65,13 @@ You can also use flags:
 
             await sock.sendMessage(m.chat, {
                 image: Buffer.from(buffer),
-                caption: `Carbonized Code (${lang})`,
-                contextInfo: {
-                    externalAdReply: {
-                        title: settings.botName,
-                        body: 'Carbon Code Image Service',
-                        mediaType: 1,
-                        previewType: 0,
-                        renderLargerThumbnail: true,
-                        thumbnail: Buffer.from(buffer),
-                        sourceUrl: 'https://api.kanata.web.id'
-                    }
-                }
+                caption: `Carbonized Code (${lang})`
             }, { quoted: m });
+            await m.react('✅');
 
         } catch (error) {
             console.error('Error in carbon command:', error);
+            await m.react('❌');
             await m.reply(`Failed to generate Carbon image.
 Error: ${error.message}`);
         }

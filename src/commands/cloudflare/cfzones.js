@@ -9,10 +9,11 @@ export default {
     category: 'Cloudflare',
     execute: async (sock, m, args) => {
         try {
-            await m.reply('⏳ Sedang mengambil daftar domain dari Cloudflare...');
+            await m.react('⏳');
             const zones = await fetchAllZones();
 
             if (!zones || zones.length === 0) {
+                await m.react('❌');
                 return m.reply('❌ Tidak ada domain ditemukan atau Token tidak memiliki izin `Zone:Read`.');
             }
 
@@ -32,12 +33,15 @@ export default {
                 botSettings.cfZones = newZones;
                 await botSettings.save();
                 clearSettingsCache();
+                await m.react('✅');
                 return m.reply(`✅ Berhasil menyinkronkan ${newZones.length} domain ke database.`);
             }
 
             await m.reply(msg);
+            await m.react('✅');
         } catch (err) {
             const errMsg = err.response?.data?.errors?.[0]?.message || err.message;
+            await m.react('❌');
             await m.reply(`❌ Gagal mengambil daftar zone: ${errMsg}`);
         }
     }

@@ -33,7 +33,7 @@ export default {
         }
 
         try {
-            await m.reply('Processing...');
+            await m.react('⏳');
 
             // 1. Create Canvas
             const size = 512;
@@ -94,9 +94,11 @@ export default {
 
             const stickerBuffer = await sticker.toBuffer();
             await sock.sendMessage(m.chat, { sticker: stickerBuffer }, { quoted: m });
+            await m.react('✅');
 
         } catch (error) {
             console.error('Error creating local brat sticker:', error);
+            await m.react('❌');
             await m.reply('Failed to create brat sticker locally.');
         }
     }

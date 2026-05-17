@@ -32,7 +32,7 @@ export default {
             return m.reply(`Please reply to an image or send an image with caption ${settings.prefix}read to extract text.`);
         }
 
-        await m.reply('Reading text...');
+        await m.react('⏳');
 
         let tempPath = null;
         try {
@@ -61,9 +61,11 @@ export default {
             });
 
             await m.reply(response.text.trim());
+            await m.react('✅');
 
         } catch (error) {
             console.error('OCR Error:', error);
+            await m.react('❌');
             await m.reply(`Error: ${error.message || 'Failed to read text'}`);
         } finally {
             if (tempPath && fs.existsSync(tempPath)) {

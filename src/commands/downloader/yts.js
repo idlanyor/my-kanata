@@ -11,13 +11,14 @@ export default {
 Ketik *yts <query>*
 Contoh: *yts himawari*`);
 
-        await sock.sendMessage(m.chat, { react: { text: '', key: m.key } });
+        await m.react('⏳');
 
         try {
             const search = await ytSearch(text);
             const results = search.videos.slice(0, 10); // Ambil 10 hasil teratas
 
             if (results.length === 0) {
+                await m.react('❌');
                 return m.reply(' Tidak ada hasil ditemukan.');
             }
 
@@ -95,12 +96,12 @@ Query: _${text}_`
             }, { quoted: m });
 
             await sock.relayMessage(m.chat, message.message, { messageId: message.key.id });
-            await sock.sendMessage(m.chat, { react: { text: '', key: m.key } });
+            await m.react('✅');
 
         } catch (err) {
             console.error('[ERROR] yts carousel failed:', err);
-            await sock.sendMessage(m.chat, { react: { text: '', key: m.key } });
-            m.reply(` Terjadi kesalahan: ${err.message}`);
+            await m.react('❌');
+            await m.reply(` Terjadi kesalahan: ${err.message}`);
         }
     }
 };

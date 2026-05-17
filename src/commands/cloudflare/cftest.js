@@ -13,7 +13,7 @@ export default {
             return m.reply('❌ Token Cloudflare belum dikonfigurasi. Gunakan `.cfset token <key>`.');
         }
 
-        await m.reply('⏳ Sedang menguji konektivitas Cloudflare API...');
+        await m.react('⏳');
 
         let report = `*── 「 CLOUDFLARE TEST REPORT 」 ──*\n\n`;
         let hasError = false;
@@ -59,5 +59,6 @@ export default {
         }
 
         await m.reply(report);
+        await m.react(hasError ? '❌' : '✅');
     }
 };

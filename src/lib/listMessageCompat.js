@@ -129,7 +129,6 @@ const buildLegacyListPayload = (payload = {}) => {
         title: payload.title || '',
         footer: payload.footer || payload.footerText || '',
         text: payload.text || payload.description || '',
-        contextInfo: payload.contextInfo,
         mentions: payload.mentions,
         viewOnce: true,
     };
@@ -161,7 +160,6 @@ const buildInteractiveListMessage = async (sock, payload = {}) => {
         footer: payload.footer || '',
         text: payload.text || payload.description || '',
         media: !!headerMedia,
-        contextInfo: payload.contextInfo,
         mentions: payload.mentions,
         viewOnce: true,
         ...(headerMedia ? {
@@ -220,12 +218,6 @@ const buildWileysStyleContent = async (sock, payload = {}) => {
 
         Object.assign(interactiveMessage.header, mediaMessage);
 
-        if (payload.contextInfo) {
-            interactiveMessage.contextInfo = payload.contextInfo;
-        } else if (payload.mentions?.length) {
-            interactiveMessage.contextInfo = { mentionedJid: payload.mentions };
-        }
-
         let message = { interactiveMessage };
         if (payload.viewOnce) {
             message = {
@@ -253,7 +245,6 @@ const buildWileysStyleContent = async (sock, payload = {}) => {
                 footerText: payload.footer || payload.footerText || '',
                 description: payload.text || payload.description || '',
                 listType: proto.Message.ListMessage.ListType.SINGLE_SELECT,
-                contextInfo: payload.contextInfo || (payload.mentions?.length ? { mentionedJid: payload.mentions } : undefined),
             }),
         };
 

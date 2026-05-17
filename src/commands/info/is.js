@@ -1,6 +1,5 @@
 import os from 'os';
 import { settings } from '../../config/settings.js';
-import { adContext } from '../../lib/adReply.js';
 
 export default {
     name: 'is',
@@ -39,14 +38,8 @@ export default {
         info += `➛ *CPU:* ${os.cpus()[0].model} (${os.cpus().length} Cores)\n\n`;
         info += `*© ${settings.botName}*`;
 
-        const ctx = await adContext({
-            title: `SYSTEM STATUS: ${settings.botName}`,
-            body: `Uptime: ${uptimeString} | RAM: ${ramUsage}MB`,
-        });
-
         await sock.sendMessage(m.chat, { 
-            text: info,
-            contextInfo: ctx
+            text: info
         }, { quoted: m });
     }
 };

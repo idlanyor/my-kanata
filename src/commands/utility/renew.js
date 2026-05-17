@@ -91,7 +91,7 @@ ${settings.prefix}renew VPS 158.69.207.97 | 100000 | Roy | 12 March 2026`
         };
 
         try {
-            await m.reply('Generating renewal invoice...');
+            await m.react('⏳');
             
             const apiKey = process.env.INVOICE_API_KEY;
             const pdfBuffer = await generateInvoice(invoiceData, apiKey);
@@ -102,10 +102,12 @@ ${settings.prefix}renew VPS 158.69.207.97 | 100000 | Roy | 12 March 2026`
                 fileName: `${invoiceNumber}.pdf`,
                 caption: `Billing for ${product} is ready.`
             }, { quoted: m });
+            await m.react('✅');
             
         } catch (error) {
             console.error('Renew Error:', error);
-            m.reply(`Failed to create invoice: ${error.message}`);
+            await m.react('❌');
+            await m.reply(`Failed to create invoice: ${error.message}`);
         }
     }
 };

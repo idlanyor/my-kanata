@@ -1,4 +1,3 @@
-import { adContext } from '../../lib/adReply.js';
 import os from 'os';
 import { performance } from 'perf_hooks';
 
@@ -37,14 +36,8 @@ export default {
                           `➛ *OS:* ${os.platform()} (${cpuModel})\n\n` +
                           `_Kanata System is active._`;
 
-        const ctx = await adContext({
-            title: 'KANATA BOT PERFORMANCE',
-            body: `Status: Online | Speed: ${latensi}ms`
-        });
-
         const payload = {
             text: statsText,
-            contextInfo: ctx,
             footer: 'Aksi cepat',
             title: 'KANATA BOT PERFORMANCE',
             interactiveButtons: [
@@ -73,8 +66,7 @@ export default {
         }
 
         await sock.sendMessage(m.chat, {
-            text: statsText,
-            contextInfo: ctx
+            text: statsText
         }, { quoted: m });
     }
 };

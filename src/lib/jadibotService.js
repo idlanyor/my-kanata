@@ -5,6 +5,7 @@ import path from 'path';
 import fsExtra from 'fs-extra';
 import logger from './logger.js';
 import { messageHandler } from '../handlers/messageHandler.js';
+import { attachGroupMetadataPatch } from './groupMetadataPatch.js';
 
 class JadibotService {
     constructor() {
@@ -56,6 +57,8 @@ class JadibotService {
             defaultQueryTimeoutMs: 60000,
             keepAliveIntervalMs: 30000,
         });
+
+        attachGroupMetadataPatch(sock);
 
         const sessionData = {
             sock,

@@ -3,7 +3,6 @@ import { promisify } from 'util';
 import fs from 'fs';
 import path from 'path';
 import AdmZip from 'adm-zip';
-import { toFancy } from '../../lib/font.js';
 
 const execPromise = promisify(exec);
 
@@ -32,7 +31,7 @@ Example: .gitclone https://github.com/user/repo`);
         const zipPath = path.resolve(`./${repo}.zip`);
 
         try {
-            await m.reply(toFancy('Cloning repository... mohon tunggu.'));
+            await m.react('⏳');
 
             // Clone repo
             await execPromise(`git clone --depth 1 ${url} ${tempDir}`);
@@ -56,9 +55,11 @@ Example: .gitclone https://github.com/user/repo`);
                 caption: ` *Repository:* ${user}/${repo}
  *Source:* ${url}`
             }, { quoted: m });
+            await m.react('✅');
 
         } catch (error) {
             console.error('GitClone Error:', error);
+            await m.react('❌');
             await m.reply(` Gagal meng-clone repository: ${error.message}`);
         } finally {
             // Cleanup

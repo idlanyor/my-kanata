@@ -31,7 +31,7 @@ export default {
                 return m.reply(`Please reply to an image or document (Word/Excel/PPT) with ${settings.prefix}topdf`);
             }
 
-            await m.reply('Processing conversion to PDF...');
+            await m.react('⏳');
 
             // Download file
             const mediaType = isImage ? 'image' : 'document';
@@ -76,6 +76,7 @@ export default {
                 mimetype: 'application/pdf',
                 fileName: outputFileName
             }, { quoted: m });
+            await m.react('✅');
 
             // Cleanup
             if (fs.existsSync(tempInputPath)) fs.unlinkSync(tempInputPath);
@@ -83,6 +84,7 @@ export default {
 
         } catch (error) {
             console.error('iLovePDF Error:', error);
+            await m.react('❌');
             await m.reply(`Error: ${error.message || 'Failed to convert file to PDF'}`);
         }
     }

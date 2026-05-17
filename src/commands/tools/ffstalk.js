@@ -108,7 +108,7 @@ export default {
             return m.reply('UID harus berupa angka.\nContoh: .ffstalk 123456789 id');
         }
 
-        await m.reply('Processing Free Fire lookup...');
+        await m.react('⏳');
 
         try {
             const ffModule = await import('@spinzaf/freefire-api');
@@ -131,6 +131,7 @@ export default {
             }
 
             if (!result || typeof result !== 'object') {
+                await m.react('❌');
                 return m.reply('Gagal mengambil data Free Fire. Coba UID/region lain.');
             }
 
@@ -155,14 +156,18 @@ export default {
             msg += `Guild: ${formatValue(guild)}\n`;
             msg += formatRawDataBlock(data, 3900 - msg.length);
 
-            return m.reply(msg.slice(0, 3900));
+            await m.reply(msg.slice(0, 3900));
+            await m.react('✅');
+            return;
         } catch (error) {
             console.error('[DEBUG] ffstalk error:', error);
 
             if (String(error.message || '').includes('Cannot find package')) {
+                await m.react('❌');
                 return m.reply('Dependency belum terpasang: @spinzaf/freefire-api');
             }
 
+            await m.react('❌');
             return m.reply(`Gagal cek Free Fire: ${error.message || 'Unknown error'}`);
         }
     }

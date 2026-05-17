@@ -32,7 +32,7 @@ export default {
                 return m.reply(`Please reply to a PDF document with ${settings.prefix}pdf2img`);
             }
 
-            await m.reply('Converting PDF to Image...');
+            await m.react('⏳');
 
             const stream = await downloadContentFromMessage(msg, 'document');
             let buffer = Buffer.from([]);
@@ -93,9 +93,11 @@ export default {
 
             if (fs.existsSync(tempPdfPath)) fs.unlinkSync(tempPdfPath);
             if (fs.existsSync(tempOutputPath)) fs.unlinkSync(tempOutputPath);
+            await m.react('✅');
 
         } catch (error) {
             console.error('Pdf2Img Error:', error);
+            await m.react('❌');
             await m.reply(`Error: ${error.message || 'Failed to convert PDF to Image'}`);
         }
     }

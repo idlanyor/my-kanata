@@ -62,7 +62,7 @@ export default {
 
         if (!config.url) return m.reply('Could not identify a URL in the curl command.');
 
-        await m.reply(`Executing ${config.method} request to: ${config.url}...`);
+        await m.react('⏳');
 
         try {
             const axiosConfig = {
@@ -120,9 +120,11 @@ export default {
                      caption: caption
                  }, { quoted: m });
             }
+            await m.react('✅');
 
         } catch (err) {
             console.error(`[DEBUG] CURL request failed:`, err.message);
+            await m.react('❌');
             await m.reply(`*Error:* ${err.message}`);
         }
     }

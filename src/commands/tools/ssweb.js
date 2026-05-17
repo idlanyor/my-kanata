@@ -16,7 +16,7 @@ export default {
             url = 'https://' + url;
         }
 
-        await sock.sendMessage(m.chat, { text: 'Taking screenshot, please wait...' }, { quoted: m });
+        await m.react('⏳');
 
         let browser;
         try {
@@ -42,30 +42,27 @@ export default {
             // Go to URL and wait for network to be idle
             await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 });
 
-            const screenshotBuffer = await page.screenshot({ 
+            const screenshot = await page.screenshot({
                 type: 'png', 
                 fullPage: false,
                 omitBackground: true 
             });
+            const screenshotBuffer = Buffer.from(screenshot);
+
+            if (!screenshotBuffer.length) {
+                throw new Error('Screenshot result is empty.');
+            }
 
             await sock.sendMessage(m.chat, {
                 image: screenshotBuffer,
-                caption: `Screenshot of: ${url}`,
-                contextInfo: {
-                    externalAdReply: {
-                        title: settings.botName,
-                        body: 'Web Screenshot Service',
-                        mediaType: 1,
-                        previewType: 0,
-                        renderLargerThumbnail: true,
-                        thumbnail: screenshotBuffer,
-                        sourceUrl: url
-                    }
-                }
+                mimetype: 'image/png',
+                caption: `Screenshot of: ${url}`
             }, { quoted: m });
+            await m.react('✅');
 
         } catch (error) {
             console.error('Error in ssweb command:', error);
+            await m.react('❌');
             await sock.sendMessage(m.chat, { text: `Failed to take screenshot.\nError: ${error.message}` }, { quoted: m });
         } finally {
             if (browser) {

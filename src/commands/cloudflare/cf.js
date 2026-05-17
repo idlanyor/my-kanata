@@ -44,11 +44,14 @@ export default {
             }
 
             if (command === 'cflist') {
-                await m.reply('⏳ Fetching rules...');
+                await m.react('⏳');
                 const mode = args[0] ? args[0].toLowerCase() : null; 
                 const rules = await listRules(mode);
                 
-                if (!rules || rules.length === 0) return m.reply('No rules found.');
+                if (!rules || rules.length === 0) {
+                    await m.react('❌');
+                    return m.reply('No rules found.');
+                }
 
                 let msg = `*Cloudflare Access Rules*\n\n`;
                 rules.forEach((r, i) => {
@@ -57,6 +60,7 @@ export default {
                     msg += `   Date: ${new Date(r.created_on).toLocaleDateString()}\n\n`;
                 });
                 await m.reply(msg);
+                await m.react('✅');
             } 
             
             else if (command === 'cfban') {
@@ -64,9 +68,10 @@ export default {
                 const notes = args.slice(1).join(' ') || 'Banned via WhatsApp Bot';
                 if (!ip) return m.reply(`Usage: ${usedPrefix}cfban <ip> <notes>`);
 
-                await m.reply('⏳ Blocking IP...');
+                await m.react('⏳');
                 const result = await createRule(ip, 'block', notes);
                 await m.reply(`Successfully BANNED IP: *${result.configuration.value}*\nID: ${result.id}`);
+                await m.react('✅');
             } 
             
             else if (command === 'cfwhitelist') {
@@ -74,21 +79,24 @@ export default {
                 const notes = args.slice(1).join(' ') || 'Whitelisted via WhatsApp Bot';
                 if (!ip) return m.reply(`Usage: ${usedPrefix}cfwhitelist <ip> <notes>`);
 
-                await m.reply('⏳ Whitelisting IP...');
+                await m.react('⏳');
                 const result = await createRule(ip, 'whitelist', notes);
                 await m.reply(`Successfully WHITELISTED IP: *${result.configuration.value}*\nID: ${result.id}`);
+                await m.react('✅');
             }
 
             else if (command === 'cfunban') {
                 const ip = args[0];
                 if (!ip) return m.reply(`Usage: ${usedPrefix}cfunban <ip>`);
 
-                await m.reply('⏳ Deleting rule...');
+                await m.react('⏳');
                 const result = await deleteRule(ip);
                 
                 if (result) {
                     await m.reply(`Successfully removed rule for IP: *${result.ip}*`);
+                    await m.react('✅');
                 } else {
+                    await m.react('❌');
                     await m.reply(`IP not found in firewall rules.`);
                 }
             }
@@ -96,6 +104,7 @@ export default {
         } catch (error) {
             console.error(error);
             const errMsg = error.response?.data?.errors?.[0]?.message || error.message;
+            await m.react('❌');
             await m.reply(`❌ Error: ${errMsg}`);
         }
     }

@@ -28,7 +28,7 @@ export default {
                 return m.reply(`Nomor WhatsApp Anda sudah terdaftar dengan akun: *${existing.username}* (${existing.email}).\nTidak perlu mendaftar lagi.`);
             }
 
-            await m.reply('Sedang mendaftarkan akun Anda ke panel...');
+            await m.react('⏳');
 
             // 2. Generate Random Password
             const password = crypto.randomBytes(4).toString('hex') + 'Aa1!';
@@ -66,15 +66,18 @@ export default {
                 `_Silakan simpan data ini dan segera ganti password Anda di panel atau gunakan .profile edit password_`;
 
             await m.reply(successMsg);
+            await m.react('✅');
 
         } catch (error) {
             console.error('Register Error:', error.response?.data || error.message);
             const detail = error.response?.data?.errors?.[0]?.detail || error.message;
             
             if (detail.includes('already exists')) {
+                await m.react('❌');
                 return m.reply('Email atau Username tersebut sudah terdaftar di panel. Jika itu milik Anda, gunakan .bind <email> untuk menghubungkan.');
             }
             
+            await m.react('❌');
             await m.reply(`Gagal registrasi: ${detail}`);
         }
     }

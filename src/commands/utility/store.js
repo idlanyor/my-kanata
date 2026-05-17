@@ -48,7 +48,7 @@ export default {
                 return m.reply(`Insufficient balance.\nYour Balance: Rp ${user.balance.toLocaleString()}\nPrice: Rp ${plan.price.toLocaleString()}\n\nPlease contact owner to topup.`);
             }
 
-            await m.reply(`Processing your order for ${plan.name} VPS...`);
+            await m.react('⏳');
 
             try {
                 // 1. Create Server on Pterodactyl
@@ -93,9 +93,11 @@ export default {
                     `Please check your email/panel for access details.`;
 
                 await m.reply(successMsg);
+                await m.react('✅');
 
             } catch (error) {
                 console.error(error);
+                await m.react('❌');
                 await m.reply(`Failed to process order: ${error.message}`);
             }
             return;

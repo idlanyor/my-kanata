@@ -19,7 +19,7 @@ export default {
             return m.reply('API Key (MP_APIKEY) belum dikonfigurasi di server.');
         }
 
-        await m.reply('Sedang mengecek data, mohon tunggu...');
+        await m.react('⏳');
 
         try {
             const response = await axios.get('https://mustikapayment.com/api/validate-bank', {
@@ -55,8 +55,10 @@ export default {
                 if (data.bank_name) message += `• *Bank:* ${data.bank_name}\n`;
                 
                 await m.reply(message);
+                await m.react('✅');
             } else {
                 const failMsg = result.message || result.error || 'Data tidak ditemukan atau nomor salah.';
+                await m.react('❌');
                 await m.reply(`Gagal memvalidasi: ${failMsg}`);
             }
         } catch (error) {
@@ -64,6 +66,7 @@ export default {
             const errorMsg = error.response && error.response.data && error.response.data.message 
                 ? error.response.data.message 
                 : 'Terjadi kesalahan saat menghubungi server validasi.';
+            await m.react('❌');
             await m.reply(`Error: ${errorMsg}`);
         }
     }

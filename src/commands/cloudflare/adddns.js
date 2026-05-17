@@ -62,10 +62,11 @@ export default {
                         }
                     }
 
-                    await m.reply(`⏳ Sedang mencari Zone ID untuk *${domain}*...`);
+                    await m.react('⏳');
                     const zoneId = await getZoneId(domain);
                     
                     if (!zoneId) {
+                        await m.react('❌');
                         return m.reply(`❌ Domain *${domain}* tidak ditemukan di akun Cloudflare Anda. Masukkan domain lain atau ketik *batal*:`);
                     }
 
@@ -98,7 +99,7 @@ export default {
 
                 case 5: // Execution
                     if (body.toLowerCase() === 'ya' || body.toLowerCase() === 'yes') {
-                        await m.reply('⏳ Sedang membuat DNS record...');
+                        await m.react('⏳');
                         const { zoneId, type, name, domain, content, proxied } = session.data;
                         const fullName = name === '@' ? domain : `${name}.${domain}`;
                         
@@ -111,6 +112,7 @@ export default {
                         successMsg += `➛ *ID:* \`${result.id}\``;
                         
                         await m.reply(successMsg);
+                        await m.react('✅');
                         sessionManager.delete(m.sender);
                     } else {
                         sessionManager.delete(m.sender);
@@ -147,15 +149,20 @@ export default {
             const content = args[3];
             const proxied = args[4] === 'true' || args[4] === 'ya';
 
-            await m.reply(`⏳ Memproses pembuatan DNS secara instan...`);
+            await m.react('⏳');
             try {
                 const zoneId = await getZoneId(domain);
-                if (!zoneId) return m.reply(`❌ Domain ${domain} tidak ditemukan.`);
+                if (!zoneId) {
+                    await m.react('❌');
+                    return m.reply(`❌ Domain ${domain} tidak ditemukan.`);
+                }
                 
                 const fullName = name === '@' ? domain : `${name}.${domain}`;
                 const result = await addDnsRecord(zoneId, type, fullName, content, proxied);
+                await m.react('✅');
                 return m.reply(`✅ Berhasil dibuat: ${result.name} (${result.type}) -> ${result.content}`);
             } catch (e) {
+                await m.react('❌');
                 return m.reply(`❌ Gagal: ${e.message}`);
             }
         }

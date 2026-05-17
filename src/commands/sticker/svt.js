@@ -23,9 +23,7 @@ export default {
         const color = args[0] || '00ff00';
         const similarity = args[1] || '0.1'; // Tingkat toleransi warna (0.01 - 1.0)
 
-        await m.react('');
-        await m.reply(` Sedang memproses... Menghapus warna: #${color}
-_Tunggu sebentar, proses ini cukup berat._`);
+        await m.react('⏳');
 
         const inputPath = makeResultPath(getRandom('.mp4'));
         const outputPath = makeResultPath(getRandom('.webp'));
@@ -41,6 +39,7 @@ _Tunggu sebentar, proses ini cukup berat._`);
             exec(getDurationCmd, async (err, stdout) => {
                 if (err) {
                     console.error('ffprobe Error:', err);
+                    await m.react('❌');
                     return m.reply(' Gagal memeriksa durasi video.');
                 }
 
@@ -49,6 +48,7 @@ _Tunggu sebentar, proses ini cukup berat._`);
 
                 if (duration > maxDuration) {
                     if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
+                    await m.react('❌');
                     return m.reply(` Durasi video terlalu panjang! Maksimal *${maxDuration} detik*. (Video kamu: ${duration.toFixed(1)} detik)`);
                 }
 
@@ -59,6 +59,7 @@ _Tunggu sebentar, proses ini cukup berat._`);
                 exec(ffmpegCmd, async (err) => {
                     if (err) {
                         console.error('FFmpeg Error:', err);
+                        await m.react('❌');
                         return m.reply(' Gagal memproses video. Pastikan FFmpeg terinstall di server.');
                     }
 
@@ -77,7 +78,7 @@ _Tunggu sebentar, proses ini cukup berat._`);
                     // 5. Cleanup
                     if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
                     if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
-                    await m.react('');
+                    await m.react('✅');
                 });
             });
 
@@ -85,8 +86,8 @@ _Tunggu sebentar, proses ini cukup berat._`);
             console.error('SVT Error:', err);
             if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
             if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+            await m.react('❌');
             await m.reply(` Terjadi kesalahan: ${err.message}`);
-            await m.react('');
         }
     }
 };

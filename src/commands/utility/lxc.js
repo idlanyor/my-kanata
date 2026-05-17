@@ -117,10 +117,13 @@ export default {
             switch (sub) {
                 case 'list':
                 case 'ls': {
-                    await m.reply('Fetching LXC containers...');
+                    await m.react('⏳');
                     const lxcs = await getUserLXCs(isOwner ? null : emailCloud, isOwner);
 
-                    if (lxcs.length === 0) return m.reply('No LXC containers found.');
+                    if (lxcs.length === 0) {
+                        await m.react('❌');
+                        return m.reply('No LXC containers found.');
+                    }
 
                     let msg = `*PROXMOX LXC LIST*
 
@@ -142,6 +145,7 @@ export default {
                     msg += `
 To manage: ${settings.prefix}lxc <vmid> <start|stop|reboot|status>`;
                     await m.reply(msg);
+                    await m.react('✅');
                     break;
                 }
 
@@ -189,9 +193,10 @@ To manage: ${settings.prefix}lxc <vmid> <start|stop|reboot|status>`;
                     const lxc = lxcs.find(l => l.vmid.toString() === vmid.toString());
                     if (!lxc) return m.reply('LXC not found or access denied.');
 
-                    await m.reply(`Sending ${action} signal to LXC ${vmid}...`);
+                    await m.react('⏳');
                     await setLxcPowerState(lxc.node, vmid, action);
                     await m.reply(`Success! Action *${action}* has been sent to LXC *${lxc.name}*.`);
+                    await m.react('✅');
                     break;
                 }
 
@@ -210,9 +215,10 @@ To manage: ${settings.prefix}lxc <vmid> <start|stop|reboot|status>`;
                             return this.execute(sock, m, ['status', vmid], '');
                         }
                         
-                        await m.reply(`Sending ${action} signal to LXC ${vmid}...`);
+                        await m.react('⏳');
                         await setLxcPowerState(lxc.node, vmid, action);
                         await m.reply(`Success! Action *${action}* has been sent to LXC *${lxc.name}*.`);
+                        await m.react('✅');
                     } else {
                         await m.reply(`*PROXMOX LXC MANAGER*
 

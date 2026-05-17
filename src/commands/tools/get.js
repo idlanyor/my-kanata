@@ -11,7 +11,7 @@ export default {
         let url = text.trim();
         if (!url.startsWith('http')) url = 'https://' + url;
 
-        await m.reply(`Fetching: ${url}...`);
+        await m.react('⏳');
 
         try {
             const response = await axios.get(url, { 
@@ -59,9 +59,11 @@ export default {
                      caption: `Status: ${response.status} ${response.statusText}`
                  }, { quoted: m });
             }
+            await m.react('✅');
 
         } catch (err) {
             console.error(`[DEBUG] GET request failed:`, err.message);
+            await m.react('❌');
             await m.reply(` *Error:* ${err.message}`);
         }
     }
