@@ -11,8 +11,8 @@ const getApiKey = () => {
 const aliceApi = axios.create({
     baseURL: ALICE_API_BASE,
     headers: {
-        'Content-Type': 'application/json'
-    }
+        'Content-Type': 'application/json',
+    },
 });
 
 aliceApi.interceptors.request.use((config) => {
@@ -36,17 +36,19 @@ export default {
     execute: async (sock, m, args, text) => {
         try {
             if (!getApiKey()) {
-                await m.reply(' API Key Alice belum dikonfigurasi. Silakan tambahkan ALICE_API_KEY di file .env Anda.');
+                await m.reply(
+                    ' API Key Alice belum dikonfigurasi. Silakan tambahkan ALICE_API_KEY di file .env Anda.'
+                );
                 return;
             }
 
-            // args is already an array of words. 
+            // args is already an array of words.
             // args[0] is the subcommand
             const subCommand = args[0]?.toLowerCase();
             const params = args.slice(1); // The rest of the arguments
 
             await sock.sendMessage(m.chat, {
-                react: { text: '', key: m.key }
+                react: { text: '', key: m.key },
             });
 
             switch (subCommand) {
@@ -116,19 +118,18 @@ _Ketik ${settings.prefix}alice plans untuk mulai_`);
             }
 
             await sock.sendMessage(m.chat, {
-                react: { text: '', key: m.key }
+                react: { text: '', key: m.key },
             });
-
         } catch (error) {
             console.error('Error in alice vps:', error);
             await sock.sendMessage(m.chat, {
-                react: { text: '', key: m.key }
+                react: { text: '', key: m.key },
             });
-            
+
             const errorMsg = error.response?.data?.message || error.message;
             await m.reply(` Error: ${errorMsg}`);
         }
-    }
+    },
 };
 
 async function handlePlans(sock, m) {
@@ -143,9 +144,10 @@ async function handlePlans(sock, m) {
     let text = ` *DAFTAR PAKET VPS ALICE*\n\n`;
 
     for (const plan of plans) {
-        const memory = plan.memory >= 1024 ? `${(plan.memory / 1024).toFixed(0)}GB` : `${plan.memory}MB`;
+        const memory =
+            plan.memory >= 1024 ? `${(plan.memory / 1024).toFixed(0)}GB` : `${plan.memory}MB`;
         const disk = plan.disk >= 1000 ? `${(plan.disk / 1000).toFixed(0)}TB` : `${plan.disk}GB`;
-        
+
         text += `*${plan.name}* (ID: ${plan.id})\n`;
         text += `├ CPU: ${plan.cpu} Core (${plan.cpu_name})\n`;
         text += `├ RAM: ${memory}\n`;
@@ -208,7 +210,7 @@ Gunakan ${settings.prefix}alice plans untuk melihat plan_id\nGunakan ${settings.
         os_id: parseInt(osId),
         time: parseInt(time),
         ssh_key_id: null,
-        boot_script: null
+        boot_script: null,
     });
 
     const vps = response.data.data;
@@ -299,7 +301,9 @@ async function handlePower(sock, m, instanceId, action) {
     const validActions = ['boot', 'shutdown', 'restart', 'poweroff'];
 
     if (!instanceId || !action) {
-        await m.reply(` Format salah!\n*Penggunaan:* ${settings.prefix}alice power <id> <action>\n*Actions:* boot, shutdown, restart, poweroff\n*Contoh:* ${settings.prefix}alice power 12345 restart`);
+        await m.reply(
+            ` Format salah!\n*Penggunaan:* ${settings.prefix}alice power <id> <action>\n*Actions:* boot, shutdown, restart, poweroff\n*Contoh:* ${settings.prefix}alice power 12345 restart`
+        );
         return;
     }
 
@@ -309,14 +313,14 @@ async function handlePower(sock, m, instanceId, action) {
     }
 
     const response = await aliceApi.post(`/evo/instances/${instanceId}/power`, {
-        action: action.toLowerCase()
+        action: action.toLowerCase(),
     });
 
     const actionText = {
         boot: ' Boot',
         shutdown: ' Shutdown',
         restart: ' Restart',
-        poweroff: ' Poweroff'
+        poweroff: ' Poweroff',
     };
 
     await m.reply(` ${actionText[action.toLowerCase()]} berhasil untuk VPS ${instanceId}`);
@@ -324,12 +328,14 @@ async function handlePower(sock, m, instanceId, action) {
 
 async function handleRenew(sock, m, instanceId, hours) {
     if (!instanceId || !hours) {
-        await m.reply(` Format salah!\n*Penggunaan:* ${settings.prefix}alice renew <id> <jam>\n*Contoh:* ${settings.prefix}alice renew 12345 24`);
+        await m.reply(
+            ` Format salah!\n*Penggunaan:* ${settings.prefix}alice renew <id> <jam>\n*Contoh:* ${settings.prefix}alice renew 12345 24`
+        );
         return;
     }
 
     const response = await aliceApi.post(`/evo/instances/${instanceId}/renewals`, {
-        time: parseInt(hours)
+        time: parseInt(hours),
     });
 
     const data = response.data.data;

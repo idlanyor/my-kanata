@@ -2,7 +2,7 @@ import { exec } from 'child_process';
 import fs from 'fs';
 import { Sticker, StickerTypes } from 'wa-sticker-formatter';
 import { settings } from '../../config/settings.js';
-import { makeResultPath } from '../../lib/resultPath.js';
+import { makeResultPath } from '../../utils/resultPath.js';
 
 const getRandom = (ext) => `${Math.floor(Math.random() * 10000)}${ext}`;
 
@@ -15,7 +15,9 @@ export default {
         const target = m.quoted ? m.quoted : m;
 
         if (!target.isVideo) {
-            return m.reply(' Balas video yang latarnya polos (misal Green Screen) untuk dijadikan stiker transparan.');
+            return m.reply(
+                ' Balas video yang latarnya polos (misal Green Screen) untuk dijadikan stiker transparan.'
+            );
         }
 
         // Ambil warna dari argumen (default hijau: 00ff00)
@@ -35,7 +37,7 @@ export default {
 
             // 2. Cek Durasi via ffprobe
             const getDurationCmd = `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 ${inputPath}`;
-            
+
             exec(getDurationCmd, async (err, stdout) => {
                 if (err) {
                     console.error('ffprobe Error:', err);
@@ -49,7 +51,9 @@ export default {
                 if (duration > maxDuration) {
                     if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
                     await m.react('❌');
-                    return m.reply(` Durasi video terlalu panjang! Maksimal *${maxDuration} detik*. (Video kamu: ${duration.toFixed(1)} detik)`);
+                    return m.reply(
+                        ` Durasi video terlalu panjang! Maksimal *${maxDuration} detik*. (Video kamu: ${duration.toFixed(1)} detik)`
+                    );
                 }
 
                 // 3. Jalankan FFmpeg (Filter colorkey)
@@ -60,7 +64,9 @@ export default {
                     if (err) {
                         console.error('FFmpeg Error:', err);
                         await m.react('❌');
-                        return m.reply(' Gagal memproses video. Pastikan FFmpeg terinstall di server.');
+                        return m.reply(
+                            ' Gagal memproses video. Pastikan FFmpeg terinstall di server.'
+                        );
                     }
 
                     // 4. Re-format pake wa-sticker-formatter biar metadata aman
@@ -69,7 +75,7 @@ export default {
                         pack: settings.botName,
                         author: m.pushName || 'KanataBot',
                         type: StickerTypes.FULL,
-                        quality: 50
+                        quality: 50,
                     });
 
                     const result = await sticker.toBuffer();
@@ -81,7 +87,6 @@ export default {
                     await m.react('✅');
                 });
             });
-
         } catch (err) {
             console.error('SVT Error:', err);
             if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
@@ -89,5 +94,5 @@ export default {
             await m.react('❌');
             await m.reply(` Terjadi kesalahan: ${err.message}`);
         }
-    }
+    },
 };

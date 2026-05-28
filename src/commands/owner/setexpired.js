@@ -8,10 +8,10 @@ const PTERO_API_KEY = process.env.PTERO_API_KEY;
 const ptero = axios.create({
     baseURL: `${PTERO_URL}/api/application`,
     headers: {
-        'Authorization': `Bearer ${PTERO_API_KEY}`,
+        Authorization: `Bearer ${PTERO_API_KEY}`,
         'Content-Type': 'application/json',
-        'Accept': 'Application/vnd.pterodactyl.v1+json',
-    }
+        Accept: 'Application/vnd.pterodactyl.v1+json',
+    },
 });
 
 export default {
@@ -25,14 +25,17 @@ export default {
         // Fitur 1: List Server
         if (sub === 'list') {
             const servers = await Server.find({}).sort({ expiredAt: 1 });
-            if (servers.length === 0) return m.reply(`Belum ada data server di database bot. Gunakan ${settings.prefix}setexpired sync untuk mengambil data dari panel.`);
+            if (servers.length === 0)
+                return m.reply(
+                    `Belum ada data server di database bot. Gunakan ${settings.prefix}setexpired sync untuk mengambil data dari panel.`
+                );
 
             let msg = `*DAFTAR MASA AKTIF SERVER*\n\n`;
             servers.forEach((srv, i) => {
                 const now = new Date();
                 const remains = Math.ceil((srv.expiredAt - now) / (1000 * 60 * 60 * 24));
                 const status = remains <= 0 ? '❌ EXPIRED' : `✅ ${remains} Hari lagi`;
-                
+
                 msg += `${i + 1}. *${srv.planName}*\n`;
                 msg += `   ID: ${srv.pteroId} | Identifier: ${srv.identifier}\n`;
                 msg += `   Owner: @${srv.userId.split('@')[0]}\n`;
@@ -41,7 +44,11 @@ export default {
                 msg += `--------------------------\n`;
             });
 
-            return sock.sendMessage(m.chat, { text: msg, mentions: servers.map(s => s.userId) }, { quoted: m });
+            return sock.sendMessage(
+                m.chat,
+                { text: msg, mentions: servers.map((s) => s.userId) },
+                { quoted: m }
+            );
         }
 
         // Fitur 2: Sync Server dari Panel
@@ -51,7 +58,7 @@ export default {
                 // Ambil semua server & user dari panel
                 const [serversResp, usersResp] = await Promise.all([
                     ptero.get('/servers'),
-                    ptero.get('/users')
+                    ptero.get('/users'),
                 ]);
 
                 const pteroServers = serversResp.data.data;
@@ -60,11 +67,11 @@ export default {
 
                 for (const srvData of pteroServers) {
                     const s = srvData.attributes;
-                    
+
                     // Cek apakah sudah ada di DB
                     const exists = await Server.findOne({ pteroId: s.id });
                     if (!exists) {
-                        const owner = pteroUsers.find(u => u.attributes.id === s.user);
+                        const owner = pteroUsers.find((u) => u.attributes.id === s.user);
                         const userJid = owner?.attributes.external_id || 'unknown';
 
                         const defaultExpired = new Date();
@@ -76,14 +83,16 @@ export default {
                             identifier: s.identifier,
                             planName: s.name,
                             price: 0,
-                            expiredAt: defaultExpired
+                            expiredAt: defaultExpired,
                         });
                         addedCount++;
                     }
                 }
 
                 await m.react('✅');
-                return m.reply(`Selesai! Berhasil mensinkronisasi ${addedCount} server baru ke database bot.\n\nSekarang gunakan .setexpired list untuk melihat hasilnya.`);
+                return m.reply(
+                    `Selesai! Berhasil mensinkronisasi ${addedCount} server baru ke database bot.\n\nSekarang gunakan .setexpired list untuk melihat hasilnya.`
+                );
             } catch (e) {
                 console.error(e);
                 await m.react('❌');
@@ -96,11 +105,13 @@ export default {
         const dateInput = args[1];
 
         if (!id || !dateInput || dateInput.length !== 6) {
-            return m.reply(`*Format Salah!*\n\n` +
-                `Gunakan:\n` +
-                `• ${settings.prefix}setexpired list (Melihat daftar)\n` +
-                `• ${settings.prefix}setexpired sync (Ambil semua server dari panel)\n` +
-                `• ${settings.prefix}setexpired <id/identifier> <DDMMYY> (Set expired)`);
+            return m.reply(
+                `*Format Salah!*\n\n` +
+                    `Gunakan:\n` +
+                    `• ${settings.prefix}setexpired list (Melihat daftar)\n` +
+                    `• ${settings.prefix}setexpired sync (Ambil semua server dari panel)\n` +
+                    `• ${settings.prefix}setexpired <id/identifier> <DDMMYY> (Set expired)`
+            );
         }
 
         const day = parseInt(dateInput.substring(0, 2));
@@ -108,7 +119,8 @@ export default {
         const year = parseInt('20' + dateInput.substring(4, 6));
         const expiredDate = new Date(year, month, day, 23, 59, 59);
 
-        if (isNaN(expiredDate.getTime())) return m.reply('Format tanggal tidak valid. Gunakan DDMMYY.');
+        if (isNaN(expiredDate.getTime()))
+            return m.reply('Format tanggal tidak valid. Gunakan DDMMYY.');
 
         try {
             await m.react('⏳');
@@ -133,7 +145,7 @@ export default {
                         identifier: pteroSrv.identifier,
                         planName: pteroSrv.name,
                         price: 0,
-                        expiredAt: expiredDate
+                        expiredAt: expiredDate,
                     });
                 } else {
                     await m.react('❌');
@@ -145,11 +157,13 @@ export default {
                 await srv.save();
             }
 
-            await m.reply(`Berhasil! Server ${srv.planName} disetel expired hingga ${expiredDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}.`);
+            await m.reply(
+                `Berhasil! Server ${srv.planName} disetel expired hingga ${expiredDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}.`
+            );
             await m.react('✅');
         } catch (error) {
             await m.react('❌');
             await m.reply(`Error: ${error.message}`);
         }
-    }
+    },
 };

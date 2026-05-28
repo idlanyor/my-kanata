@@ -1,4 +1,11 @@
-import { getUserLXCs, setLxcPowerState, getLxcStatus, getCloudUsers, updateCloudUser, deleteCloudUser } from '../../lib/cloudApi.js';
+import {
+    getUserLXCs,
+    setLxcPowerState,
+    getLxcStatus,
+    getCloudUsers,
+    updateCloudUser,
+    deleteCloudUser,
+} from '../../services/cloudApi.js';
 import User from '../../database/models/User.js';
 import { settings } from '../../config/settings.js';
 
@@ -14,13 +21,10 @@ export default {
         // 1. Bind Account
         if (sub === 'bind') {
             const email = args[1];
-            if (!email || !email.includes('@')) return m.reply(`Usage: ${settings.prefix}lxc bind <email_cloud>`);
-            
-            await User.findOneAndUpdate(
-                { jid: m.sender },
-                { emailCloud: email },
-                { upsert: true }
-            );
+            if (!email || !email.includes('@'))
+                return m.reply(`Usage: ${settings.prefix}lxc bind <email_cloud>`);
+
+            await User.findOneAndUpdate({ jid: m.sender }, { emailCloud: email }, { upsert: true });
             return m.reply(`Success! WhatsApp linked to cloud account: *${email}*`);
         }
 
@@ -44,22 +48,28 @@ export default {
                     }
                     case 'search': {
                         const query = args[2]?.toLowerCase();
-                        if (!query) return m.reply(`Usage: ${settings.prefix}lxc user search <name/email>`);
+                        if (!query)
+                            return m.reply(`Usage: ${settings.prefix}lxc user search <name/email>`);
                         const users = await getCloudUsers();
-                        const results = users.filter(u => u.name.toLowerCase().includes(query) || u.email.toLowerCase().includes(query));
+                        const results = users.filter(
+                            (u) =>
+                                u.name.toLowerCase().includes(query) ||
+                                u.email.toLowerCase().includes(query)
+                        );
                         if (results.length === 0) return m.reply('No users found.');
                         let msg = `*SEARCH RESULTS*\n\n`;
-                        results.forEach(u => {
+                        results.forEach((u) => {
                             msg += `+ *${u.name}* (${u.email})\n  ID: ${u.id}\n  VPS: ${u.vpsCount}\n\n`;
                         });
                         return m.reply(msg);
                     }
                     case 'info': {
                         const input = args[2];
-                        if (!input) return m.reply(`Usage: ${settings.prefix}lxc user info <id/email>`);
-                        
+                        if (!input)
+                            return m.reply(`Usage: ${settings.prefix}lxc user info <id/email>`);
+
                         const users = await getCloudUsers();
-                        const u = users.find(user => user.id === input || user.email === input);
+                        const u = users.find((user) => user.id === input || user.email === input);
                         if (!u) return m.reply('User cloud not found.');
 
                         let msg = `*CLOUD USER DETAIL*\n\n`;
@@ -75,30 +85,40 @@ export default {
                         const input = args[2];
                         const field = args[3]?.toLowerCase();
                         const value = args.slice(4).join(' ');
-                        if (!input || !field || !value) return m.reply(`Usage: ${settings.prefix}lxc user edit <id/email> <name|role|balance> <value>`);
-                        
+                        if (!input || !field || !value)
+                            return m.reply(
+                                `Usage: ${settings.prefix}lxc user edit <id/email> <name|role|balance> <value>`
+                            );
+
                         const users = await getCloudUsers();
-                        const u = users.find(user => user.id === input || user.email === input);
+                        const u = users.find((user) => user.id === input || user.email === input);
                         if (!u) return m.reply('User not found.');
 
-                        await updateCloudUser(u.id, { [field]: field === 'balance' ? parseInt(value) : value });
-                        return m.reply(`Success! User *${u.email}* field *${field}* updated to: ${value}`);
+                        await updateCloudUser(u.id, {
+                            [field]: field === 'balance' ? parseInt(value) : value,
+                        });
+                        return m.reply(
+                            `Success! User *${u.email}* field *${field}* updated to: ${value}`
+                        );
                     }
                     case 'delete': {
                         const input = args[2];
-                        if (!input) return m.reply(`Usage: ${settings.prefix}lxc user delete <id/email>`);
+                        if (!input)
+                            return m.reply(`Usage: ${settings.prefix}lxc user delete <id/email>`);
                         const users = await getCloudUsers();
-                        const u = users.find(user => user.id === input || user.email === input);
+                        const u = users.find((user) => user.id === input || user.email === input);
                         if (!u) return m.reply('User not found.');
 
                         await deleteCloudUser(u.id);
                         return m.reply(`Success! User *${u.email}* deleted.`);
                     }
                     default:
-                        return m.reply(`*CLOUD USER MGMT*\n\n` +
-                            `• ${settings.prefix}lxc user list\n` +
-                            `• ${settings.prefix}lxc user edit <id> <field> <value>\n` +
-                            `• ${settings.prefix}lxc user delete <id>`);
+                        return m.reply(
+                            `*CLOUD USER MGMT*\n\n` +
+                                `• ${settings.prefix}lxc user list\n` +
+                                `• ${settings.prefix}lxc user edit <id> <field> <value>\n` +
+                                `• ${settings.prefix}lxc user delete <id>`
+                        );
                 }
             } catch (err) {
                 return m.reply(`Error: ${err.message}`);
@@ -110,7 +130,9 @@ export default {
         const emailCloud = dbUser?.emailCloud;
 
         if (!emailCloud && !isOwner) {
-            return m.reply(`Your WhatsApp is not linked to cloud account. Use ${settings.prefix}lxc bind <email> first.`);
+            return m.reply(
+                `Your WhatsApp is not linked to cloud account. Use ${settings.prefix}lxc bind <email> first.`
+            );
         }
 
         try {
@@ -153,9 +175,9 @@ To manage: ${settings.prefix}lxc <vmid> <start|stop|reboot|status>`;
                 case 'info': {
                     const vmid = args[1];
                     if (!vmid) return m.reply(`Usage: ${settings.prefix}lxc status <vmid>`);
-                    
+
                     const lxcs = await getUserLXCs(emailCloud, isOwner);
-                    const lxc = lxcs.find(l => l.vmid.toString() === vmid);
+                    const lxc = lxcs.find((l) => l.vmid.toString() === vmid);
                     if (!lxc) return m.reply('LXC not found or access denied.');
 
                     const status = await getLxcStatus(lxc.node, vmid);
@@ -176,7 +198,7 @@ To manage: ${settings.prefix}lxc <vmid> <start|stop|reboot|status>`;
 `;
                     msg += `Disk: ${(status.disk / 1024 / 1024 / 1024).toFixed(2)}GB / ${(status.maxdisk / 1024 / 1024 / 1024).toFixed(2)}GB
 `;
-                    
+
                     await m.reply(msg);
                     break;
                 }
@@ -185,17 +207,21 @@ To manage: ${settings.prefix}lxc <vmid> <start|stop|reboot|status>`;
                 case 'stop':
                 case 'reboot': {
                     const vmid = args[1] || args[0]; // .lxc stop 105 OR .lxc 105 stop
-                    const action = sub === 'start' || sub === 'stop' || sub === 'reboot' ? sub : args[1];
-                    
-                    if (!vmid || isNaN(vmid)) return m.reply(`Usage: ${settings.prefix}lxc <action> <vmid>`);
+                    const action =
+                        sub === 'start' || sub === 'stop' || sub === 'reboot' ? sub : args[1];
+
+                    if (!vmid || isNaN(vmid))
+                        return m.reply(`Usage: ${settings.prefix}lxc <action> <vmid>`);
 
                     const lxcs = await getUserLXCs(emailCloud, isOwner);
-                    const lxc = lxcs.find(l => l.vmid.toString() === vmid.toString());
+                    const lxc = lxcs.find((l) => l.vmid.toString() === vmid.toString());
                     if (!lxc) return m.reply('LXC not found or access denied.');
 
                     await m.react('⏳');
                     await setLxcPowerState(lxc.node, vmid, action);
-                    await m.reply(`Success! Action *${action}* has been sent to LXC *${lxc.name}*.`);
+                    await m.reply(
+                        `Success! Action *${action}* has been sent to LXC *${lxc.name}*.`
+                    );
                     await m.react('✅');
                     break;
                 }
@@ -205,40 +231,44 @@ To manage: ${settings.prefix}lxc <vmid> <start|stop|reboot|status>`;
                     if (args[0] && !isNaN(args[0]) && args[1]) {
                         const vmid = args[0];
                         const action = args[1].toLowerCase();
-                        
+
                         const lxcs = await getUserLXCs(emailCloud, isOwner);
-                        const lxc = lxcs.find(l => l.vmid.toString() === vmid);
+                        const lxc = lxcs.find((l) => l.vmid.toString() === vmid);
                         if (!lxc) return m.reply('LXC not found or access denied.');
 
                         if (action === 'status' || action === 'info') {
                             // Recursively call status logic
                             return this.execute(sock, m, ['status', vmid], '');
                         }
-                        
+
                         await m.react('⏳');
                         await setLxcPowerState(lxc.node, vmid, action);
-                        await m.reply(`Success! Action *${action}* has been sent to LXC *${lxc.name}*.`);
+                        await m.reply(
+                            `Success! Action *${action}* has been sent to LXC *${lxc.name}*.`
+                        );
                         await m.react('✅');
                     } else {
-                        await m.reply(`*PROXMOX LXC MANAGER*
+                        await m.reply(
+                            `*PROXMOX LXC MANAGER*
 
 ` +
-                            `• ${settings.prefix}lxc bind <email>
+                                `• ${settings.prefix}lxc bind <email>
 ` +
-                            `• ${settings.prefix}lxc list
+                                `• ${settings.prefix}lxc list
 ` +
-                            `• ${settings.prefix}lxc <vmid> status
+                                `• ${settings.prefix}lxc <vmid> status
 ` +
-                            `• ${settings.prefix}lxc <vmid> start
+                                `• ${settings.prefix}lxc <vmid> start
 ` +
-                            `• ${settings.prefix}lxc <vmid> stop
+                                `• ${settings.prefix}lxc <vmid> stop
 ` +
-                            `• ${settings.prefix}lxc <vmid> reboot`);
+                                `• ${settings.prefix}lxc <vmid> reboot`
+                        );
                     }
             }
         } catch (error) {
             console.error(error);
             await m.reply(`Error: ${error.message}`);
         }
-    }
+    },
 };

@@ -1,4 +1,5 @@
 import { jidNormalizedUser } from 'baileys';
+import logger from '../../utils/logger.js';
 
 export default {
     name: 'group',
@@ -10,23 +11,27 @@ export default {
 
         const groupMetadata = await sock.groupMetadata(m.chat);
         const participants = groupMetadata.participants;
-        
+
         const botJid = jidNormalizedUser(sock.user.id);
         const botLid = sock.user.lid ? jidNormalizedUser(sock.user.lid) : null;
-        
-        const userAdmin = participants.find(p => jidNormalizedUser(p.id) === jidNormalizedUser(m.sender));
-        const botAdmin = participants.find(p => {
+
+        const userAdmin = participants.find(
+            (p) => jidNormalizedUser(p.id) === jidNormalizedUser(m.sender)
+        );
+        const botAdmin = participants.find((p) => {
             const pid = jidNormalizedUser(p.id);
             return pid === botJid || pid === botLid;
         });
 
-        // console.log(`[DEBUG] Group Management - Chat: ${m.chat}`);
-        // console.log(`[DEBUG] Sender: ${m.sender}, isAdmin: ${userAdmin?.admin}`);
-        // console.log(`[DEBUG] Bot JID: ${botJid}, Bot LID: ${botLid}`);
-        // console.log(`[DEBUG] Bot Found: ${botAdmin ? 'Yes' : 'No'}, Admin: ${botAdmin?.admin}`);
+        // logger.info(`[DEBUG] Group Management - Chat: ${m.chat}`);
+        // logger.info(`[DEBUG] Sender: ${m.sender}, isAdmin: ${userAdmin?.admin}`);
+        // logger.info(`[DEBUG] Bot JID: ${botJid}, Bot LID: ${botLid}`);
+        // logger.info(`[DEBUG] Bot Found: ${botAdmin ? 'Yes' : 'No'}, Admin: ${botAdmin?.admin}`);
 
-        const isAdmin = userAdmin && (userAdmin.admin === 'admin' || userAdmin.admin === 'superadmin');
-        const botIsAdmin = botAdmin && (botAdmin.admin === 'admin' || botAdmin.admin === 'superadmin');
+        const isAdmin =
+            userAdmin && (userAdmin.admin === 'admin' || userAdmin.admin === 'superadmin');
+        const botIsAdmin =
+            botAdmin && (botAdmin.admin === 'admin' || botAdmin.admin === 'superadmin');
 
         if (!isAdmin) return m.reply('This command is only for group admins.');
         if (!botIsAdmin) return m.reply('I need to be an admin to manage group settings.');
@@ -40,5 +45,5 @@ export default {
         } else {
             m.reply('Invalid argument. Use open or close.');
         }
-    }
+    },
 };

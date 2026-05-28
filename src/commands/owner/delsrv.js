@@ -8,10 +8,10 @@ const PTERO_API_KEY = process.env.PTERO_API_KEY;
 const ptero = axios.create({
     baseURL: `${PTERO_URL}/api/application`,
     headers: {
-        'Authorization': `Bearer ${PTERO_API_KEY}`,
+        Authorization: `Bearer ${PTERO_API_KEY}`,
         'Content-Type': 'application/json',
-        'Accept': 'Application/vnd.pterodactyl.v1+json',
-    }
+        Accept: 'Application/vnd.pterodactyl.v1+json',
+    },
 });
 
 export default {
@@ -36,8 +36,8 @@ Contoh:
         try {
             // 1. Cari data server
             let srv = await Server.findOne({ $or: [{ pteroId: id }, { identifier: id }] });
-            let pteroId = srv ? srv.pteroId : (isNaN(id) ? null : id);
-            
+            let pteroId = srv ? srv.pteroId : isNaN(id) ? null : id;
+
             if (!pteroId && isNaN(id)) {
                 try {
                     const resp = await ptero.get(`/servers?filter[identifier]=${id}`);
@@ -45,7 +45,9 @@ Contoh:
                         pteroId = resp.data.data[0].attributes.id;
                         if (!srv) srv = resp.data.data[0].attributes;
                     }
-                } catch (e) { /* ignore */ }
+                } catch (e) {
+                    /* ignore */
+                }
             }
 
             if (!pteroId) {
@@ -53,13 +55,14 @@ Contoh:
             }
 
             // 2. Kirim Pesan Konfirmasi
-            const confirmMsg = `*KONFIRMASI PENGHAPUSAN SERVER*\n\n` +
-                             `ID: ${pteroId}\n` +
-                             `Name: ${srv?.planName || srv?.name || 'Unknown'}\n` +
-                             `Identifier: ${srv?.identifier || id}\n` +
-                             `Force Mode: ${force ? 'AKTIF' : 'NONAKTIF'}\n\n` +
-                             `⚠️ *PERINGATAN:* Tindakan ini tidak dapat dibatalkan.\n` +
-                             `Balas pesan ini dengan mengetik *Y* untuk melanjutkan penghapusan. (Waktu: 30 detik)`;
+            const confirmMsg =
+                `*KONFIRMASI PENGHAPUSAN SERVER*\n\n` +
+                `ID: ${pteroId}\n` +
+                `Name: ${srv?.planName || srv?.name || 'Unknown'}\n` +
+                `Identifier: ${srv?.identifier || id}\n` +
+                `Force Mode: ${force ? 'AKTIF' : 'NONAKTIF'}\n\n` +
+                `⚠️ *PERINGATAN:* Tindakan ini tidak dapat dibatalkan.\n` +
+                `Balas pesan ini dengan mengetik *Y* untuk melanjutkan penghapusan. (Waktu: 30 detik)`;
 
             const sent = await m.reply(confirmMsg);
 
@@ -73,12 +76,11 @@ Contoh:
                         global.confirmDelete.delete(m.sender);
                         // Optional: kirim pesan timeout
                     }
-                }, 30000)
+                }, 30000),
             });
-
         } catch (error) {
             console.error(error);
             await m.reply(`Error: ${error.message}`);
         }
-    }
+    },
 };

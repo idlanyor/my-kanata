@@ -7,27 +7,30 @@ export default {
     category: 'Downloader',
     execute: async (sock, m, args, text) => {
         if (!text) return m.reply('Please provide a Threads URL.');
-        
+
         await m.react('⏳');
-        
+
         try {
             const data = await fetchAPI('/threads/fetch', { url: text });
-            
+
             if (!data || !data.video_url) {
                 await m.react('❌');
                 return m.reply('Failed to fetch Threads media.');
             }
 
-            await sock.sendMessage(m.chat, { 
-                video: { url: data.video_url }, 
-                caption: ` *Threads Downloaded*\n\nPowered by KanataAPI`
-            }, { quoted: m });
+            await sock.sendMessage(
+                m.chat,
+                {
+                    video: { url: data.video_url },
+                    caption: ` *Threads Downloaded*\n\nPowered by KanataAPI`,
+                },
+                { quoted: m }
+            );
             await m.react('✅');
-            
         } catch (err) {
             console.error(err);
             await m.react('❌');
             await m.reply(' An error occurred while fetching the media.');
         }
-    }
+    },
 };

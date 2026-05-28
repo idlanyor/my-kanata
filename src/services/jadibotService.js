@@ -1,11 +1,18 @@
-import { makeWASocket, useMultiFileAuthState, Browsers, makeCacheableSignalKeyStore, fetchLatestBaileysVersion, DisconnectReason } from 'baileys';
+import {
+    makeWASocket,
+    useMultiFileAuthState,
+    Browsers,
+    makeCacheableSignalKeyStore,
+    fetchLatestBaileysVersion,
+    DisconnectReason,
+} from 'baileys';
 import pino from 'pino';
 import fs from 'fs';
 import path from 'path';
 import fsExtra from 'fs-extra';
-import logger from './logger.js';
+import logger from '\.\./utils/logger\.js';
 import { messageHandler } from '../handlers/messageHandler.js';
-import { attachGroupMetadataPatch } from './groupMetadataPatch.js';
+import { attachGroupMetadataPatch } from '\.\./lib/groupMetadataPatch\.js';
 
 class JadibotService {
     constructor() {
@@ -30,7 +37,7 @@ class JadibotService {
     async startSession(phoneNumber) {
         const cleanNumber = phoneNumber.replace(/\D/g, '');
         const authPath = path.join(this.baseAuthPath, cleanNumber);
-        
+
         // Re-init auth state for fresh connection attempt (Stable Pattern)
         const { state, saveCreds } = await useMultiFileAuthState(authPath);
         const { version } = await fetchLatestBaileysVersion();
@@ -39,7 +46,9 @@ class JadibotService {
         if (this.sessions.has(cleanNumber)) {
             const oldSession = this.sessions.get(cleanNumber);
             if (oldSession.sock && oldSession.status !== 'open') {
-                try { oldSession.sock.end(); } catch (e) {}
+                try {
+                    oldSession.sock.end();
+                } catch (e) {}
             }
         }
 
@@ -65,7 +74,7 @@ class JadibotService {
             status: 'connecting',
             phoneNumber: cleanNumber,
             qr: null,
-            pairingCode: null
+            pairingCode: null,
         };
         this.sessions.set(cleanNumber, sessionData);
 
@@ -73,7 +82,7 @@ class JadibotService {
 
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr, pairingCode } = update;
-            
+
             if (connection) {
                 sessionData.status = connection;
                 this.emitUpdate(cleanNumber, { status: connection });
@@ -97,11 +106,17 @@ class JadibotService {
             } else if (connection === 'close') {
                 const statusCode = lastDisconnect?.error?.output?.statusCode;
                 const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
-                
-                logger.warn(`Jadibot session closed: ${cleanNumber}. Status: ${statusCode}`, 'JADIBOT');
-                
+
+                logger.warn(
+                    `Jadibot session closed: ${cleanNumber}. Status: ${statusCode}`,
+                    'JADIBOT'
+                );
+
                 if (!shouldReconnect) {
-                    logger.error(`Jadibot logged out: ${cleanNumber}. Purging session...`, 'JADIBOT');
+                    logger.error(
+                        `Jadibot logged out: ${cleanNumber}. Purging session...`,
+                        'JADIBOT'
+                    );
                     this.sessions.delete(cleanNumber);
                     this.emitUpdate(cleanNumber, { status: 'removed' });
                     setTimeout(() => {
@@ -132,7 +147,7 @@ class JadibotService {
         const cleanNumber = phoneNumber.replace(/\D/g, '');
         const session = this.sessions.get(cleanNumber);
         const authPath = path.join(this.baseAuthPath, cleanNumber);
-        
+
         logger.info(`Stopping jadibot session: ${cleanNumber}`, 'JADIBOT');
 
         if (session) {
@@ -149,7 +164,10 @@ class JadibotService {
             try {
                 fsExtra.removeSync(authPath);
             } catch (err) {
-                logger.error(`Error removing auth path for ${cleanNumber}: ${err.message}`, 'JADIBOT');
+                logger.error(
+                    `Error removing auth path for ${cleanNumber}: ${err.message}`,
+                    'JADIBOT'
+                );
             }
         }
 
@@ -158,12 +176,12 @@ class JadibotService {
     }
 
     listSessions() {
-        return Array.from(this.sessions.values()).map(s => ({
+        return Array.from(this.sessions.values()).map((s) => ({
             phoneNumber: s.phoneNumber,
             status: s.status,
             qr: s.qr,
             pairingCode: s.pairingCode,
-            registered: s.sock?.authState?.creds?.registered || false
+            registered: s.sock?.authState?.creds?.registered || false,
         }));
     }
 

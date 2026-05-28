@@ -17,14 +17,14 @@ const formatMs = (value) => {
 };
 
 const runCliSpeedtest = async () => {
-    const commands = [
-        'speedtest --accept-license --accept-gdpr -f json',
-        'speedtest-cli --json'
-    ];
+    const commands = ['speedtest --accept-license --accept-gdpr -f json', 'speedtest-cli --json'];
 
     for (const command of commands) {
         try {
-            const { stdout } = await execAsync(command, { timeout: CLI_TIMEOUT_MS, maxBuffer: 1024 * 1024 });
+            const { stdout } = await execAsync(command, {
+                timeout: CLI_TIMEOUT_MS,
+                maxBuffer: 1024 * 1024,
+            });
             const raw = stdout?.trim();
             if (!raw) continue;
 
@@ -34,10 +34,10 @@ const runCliSpeedtest = async () => {
                 return {
                     source: 'Ookla CLI',
                     ping: Number(data?.ping?.latency),
-                    download: Number(data?.download?.bandwidth) * 8 / 1_000_000,
-                    upload: Number(data?.upload?.bandwidth) * 8 / 1_000_000,
+                    download: (Number(data?.download?.bandwidth) * 8) / 1_000_000,
+                    upload: (Number(data?.upload?.bandwidth) * 8) / 1_000_000,
                     serverName: data?.server?.name || null,
-                    isp: data?.isp || null
+                    isp: data?.isp || null,
                 };
             }
 
@@ -47,7 +47,7 @@ const runCliSpeedtest = async () => {
                 download: Number(data?.download) / 1_000_000,
                 upload: Number(data?.upload) / 1_000_000,
                 serverName: data?.server || null,
-                isp: data?.client?.isp || null
+                isp: data?.client?.isp || null,
             };
         } catch (error) {
             continue;
@@ -62,7 +62,7 @@ const measureLatency = async (url) => {
     const response = await fetch(url, {
         method: 'HEAD',
         cache: 'no-store',
-        signal: AbortSignal.timeout(HTTP_TIMEOUT_MS)
+        signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
     });
 
     if (!response.ok) {
@@ -77,7 +77,7 @@ const measureDownload = async (url) => {
     const response = await fetch(url, {
         method: 'GET',
         cache: 'no-store',
-        signal: AbortSignal.timeout(HTTP_TIMEOUT_MS)
+        signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
     });
 
     if (!response.ok) {
@@ -104,7 +104,7 @@ const runFallbackSpeedtest = async () => {
         download,
         upload: null,
         serverName: 'Cloudflare',
-        isp: null
+        isp: null,
     };
 };
 
@@ -115,12 +115,13 @@ const buildMessage = (result, fallbackUsed = false) => {
         `• Ping: ${formatMs(result.ping)}`,
         `• Download: ${formatMbps(result.download)}`,
         `• Upload: ${result.upload == null ? '-' : formatMbps(result.upload)}`,
-        `• Metode: ${result.source}`
+        `• Metode: ${result.source}`,
     ];
 
     if (result.serverName) lines.push(`• Server: ${result.serverName}`);
     if (result.isp) lines.push(`• ISP: ${result.isp}`);
-    if (fallbackUsed) lines.push('', '_Upload tidak tersedia karena CLI speedtest tidak ditemukan._');
+    if (fallbackUsed)
+        lines.push('', '_Upload tidak tersedia karena CLI speedtest tidak ditemukan._');
 
     return lines.join('\n');
 };
@@ -140,13 +141,22 @@ export default {
         } catch (cliError) {
             try {
                 const fallbackResult = await runFallbackSpeedtest();
-                await sock.sendMessage(m.chat, { text: buildMessage(fallbackResult, true) }, { quoted: m });
+                await sock.sendMessage(
+                    m.chat,
+                    { text: buildMessage(fallbackResult, true) },
+                    { quoted: m }
+                );
                 await m.react('✅');
             } catch (fallbackError) {
-                console.error('Speedtest failed:', { cliError: cliError.message, fallbackError: fallbackError.message });
+                console.error('Speedtest failed:', {
+                    cliError: cliError.message,
+                    fallbackError: fallbackError.message,
+                });
                 await m.react('❌');
-                await m.reply(`Speedtest gagal dijalankan.\n\nCLI: ${cliError.message}\nFallback: ${fallbackError.message}`);
+                await m.reply(
+                    `Speedtest gagal dijalankan.\n\nCLI: ${cliError.message}\nFallback: ${fallbackError.message}`
+                );
             }
         }
-    }
+    },
 };

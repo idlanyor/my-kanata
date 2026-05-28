@@ -37,7 +37,7 @@ Gunakan:
         if (subcommand === 'setpersona') {
             const persona = text.slice(subcommand.length).trim();
             if (!persona) return m.reply('Harap masukkan teks persona.');
-            
+
             botSettings.privateAiPersona = persona;
             await botSettings.save();
             clearSettingsCache();
@@ -61,12 +61,16 @@ Persona: ${botSettings.privateAiPersona}`);
                 botSettings.smartMode = true;
                 await botSettings.save();
                 clearSettingsCache();
-                return m.reply('🧠 Smart Mode diaktifkan.\nBot hanya akan membalas jika kamu AFK (tidak aktif mengirim pesan selama 2 menit).');
+                return m.reply(
+                    '🧠 Smart Mode diaktifkan.\nBot hanya akan membalas jika kamu AFK (tidak aktif mengirim pesan selama 2 menit).'
+                );
             } else if (toggle === 'off') {
                 botSettings.smartMode = false;
                 await botSettings.save();
                 clearSettingsCache();
-                return m.reply('🤖 Smart Mode dimatikan.\nBot akan selalu membalas chat (Always On).');
+                return m.reply(
+                    '🤖 Smart Mode dimatikan.\nBot akan selalu membalas chat (Always On).'
+                );
             }
             return m.reply('Gunakan: .aisetting smartmode on/off');
         }
@@ -89,7 +93,8 @@ Persona: ${botSettings.privateAiPersona}`);
 
         if (subcommand === 'setlink') {
             const link = args[1];
-            if (!link || !link.includes('chat.whatsapp.com')) return m.reply('Harap masukkan link grup yang valid.');
+            if (!link || !link.includes('chat.whatsapp.com'))
+                return m.reply('Harap masukkan link grup yang valid.');
             botSettings.groupInviteLink = link;
             global.targetGroupJid = null; // Reset cache JID
             await botSettings.save();
@@ -98,5 +103,5 @@ Persona: ${botSettings.privateAiPersona}`);
         }
 
         return m.reply('Subcommand tidak dikenal.');
-    }
+    },
 };

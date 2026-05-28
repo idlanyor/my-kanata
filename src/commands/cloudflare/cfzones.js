@@ -1,4 +1,4 @@
-import { fetchAllZones } from '../../lib/cloudflare.js';
+import { fetchAllZones } from '../../services/cloudflare.js';
 import Settings from '../../database/models/Settings.js';
 import { clearSettingsCache } from '../../handlers/messageFlow.js';
 
@@ -14,7 +14,9 @@ export default {
 
             if (!zones || zones.length === 0) {
                 await m.react('❌');
-                return m.reply('❌ Tidak ada domain ditemukan atau Token tidak memiliki izin `Zone:Read`.');
+                return m.reply(
+                    '❌ Tidak ada domain ditemukan atau Token tidak memiliki izin `Zone:Read`.'
+                );
             }
 
             let msg = `*── 「 CLOUDFLARE ZONES 」 ──*\n\n`;
@@ -29,7 +31,9 @@ export default {
 
             // Handle Sync
             if (args[0] === 'sync') {
-                const botSettings = await Settings.findOne({ id: 'bot_settings' }) || await Settings.create({ id: 'bot_settings' });
+                const botSettings =
+                    (await Settings.findOne({ id: 'bot_settings' })) ||
+                    (await Settings.create({ id: 'bot_settings' }));
                 botSettings.cfZones = newZones;
                 await botSettings.save();
                 clearSettingsCache();
@@ -44,5 +48,5 @@ export default {
             await m.react('❌');
             await m.reply(`❌ Gagal mengambil daftar zone: ${errMsg}`);
         }
-    }
+    },
 };

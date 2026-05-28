@@ -1,4 +1,5 @@
 import { settings } from '../../config/settings.js';
+import logger from '../../utils/logger.js';
 
 export default {
     name: 'debugm',
@@ -7,15 +8,17 @@ export default {
     category: 'Owner',
     execute: async (sock, m, args, text) => {
         // Only owner can use this to avoid leaking private data
-        const ownerJid = settings.ownerNumber.includes('@') ? settings.ownerNumber : settings.ownerNumber + '@s.whatsapp.net';
+        const ownerJid = settings.ownerNumber.includes('@')
+            ? settings.ownerNumber
+            : settings.ownerNumber + '@s.whatsapp.net';
         if (m.sender !== ownerJid && m.sender !== sock.user.id && m.sender !== sock.user.lid) {
             return m.reply('Maaf, perintah ini hanya untuk Owner.');
         }
 
-        console.log('--- DEBUG M OBJECT START ---');
+        logger.info('--- DEBUG M OBJECT START ---');
         // Log keys to avoid circular reference issues in some console implementations
-        console.log('M Keys:', Object.keys(m));
-        
+        logger.info('M Keys:', Object.keys(m));
+
         // Log specific important fields
         const debugInfo = {
             id: m.id,
@@ -36,13 +39,13 @@ export default {
                 id: m.quoted.id,
                 sender: m.quoted.sender,
                 text: m.quoted.text,
-                isBaileys: m.quoted.isBaileys
+                isBaileys: m.quoted.isBaileys,
             };
         }
 
-        console.log('Simplified Debug Info:', JSON.stringify(debugInfo, null, 2));
-        console.log('Raw M.message:', JSON.stringify(m.message, null, 2));
-        console.log('--- DEBUG M OBJECT END ---');
+        logger.info('Simplified Debug Info:', JSON.stringify(debugInfo, null, 2));
+        logger.info('Raw M.message:', JSON.stringify(m.message, null, 2));
+        logger.info('--- DEBUG M OBJECT END ---');
 
         let response = `*「 DEBUG MESSAGE OBJECT 」*\n\n`;
         response += `• *Type:* ${m.mtype}\n`;
@@ -54,5 +57,5 @@ export default {
         response += `_Detail lengkap telah dikirim ke konsol terminal._`;
 
         await m.reply(response);
-    }
+    },
 };

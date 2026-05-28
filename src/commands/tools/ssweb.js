@@ -8,7 +8,13 @@ export default {
     category: 'Tools',
     execute: async (sock, m, args, text) => {
         if (!text) {
-            return sock.sendMessage(m.chat, { text: `Please provide a URL.\nExample: ${settings.prefix}ssweb https://google.com` }, { quoted: m });
+            return sock.sendMessage(
+                m.chat,
+                {
+                    text: `Please provide a URL.\nExample: ${settings.prefix}ssweb https://google.com`,
+                },
+                { quoted: m }
+            );
         }
 
         let url = text.trim();
@@ -31,11 +37,11 @@ export default {
                     '--no-zygote',
                     '--disable-gpu',
                     '--hide-scrollbars',
-                    '--mute-audio'
-                ]
+                    '--mute-audio',
+                ],
             });
             const page = await browser.newPage();
-            
+
             // Set viewport to a reasonable desktop size
             await page.setViewport({ width: 1280, height: 720 });
 
@@ -43,9 +49,9 @@ export default {
             await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 });
 
             const screenshot = await page.screenshot({
-                type: 'png', 
+                type: 'png',
                 fullPage: false,
-                omitBackground: true 
+                omitBackground: true,
             });
             const screenshotBuffer = Buffer.from(screenshot);
 
@@ -53,21 +59,28 @@ export default {
                 throw new Error('Screenshot result is empty.');
             }
 
-            await sock.sendMessage(m.chat, {
-                image: screenshotBuffer,
-                mimetype: 'image/png',
-                caption: `Screenshot of: ${url}`
-            }, { quoted: m });
+            await sock.sendMessage(
+                m.chat,
+                {
+                    image: screenshotBuffer,
+                    mimetype: 'image/png',
+                    caption: `Screenshot of: ${url}`,
+                },
+                { quoted: m }
+            );
             await m.react('✅');
-
         } catch (error) {
             console.error('Error in ssweb command:', error);
             await m.react('❌');
-            await sock.sendMessage(m.chat, { text: `Failed to take screenshot.\nError: ${error.message}` }, { quoted: m });
+            await sock.sendMessage(
+                m.chat,
+                { text: `Failed to take screenshot.\nError: ${error.message}` },
+                { quoted: m }
+            );
         } finally {
             if (browser) {
                 await browser.close();
             }
         }
-    }
+    },
 };

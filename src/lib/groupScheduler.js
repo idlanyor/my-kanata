@@ -1,5 +1,5 @@
 import Group from '../database/models/Group.js';
-import logger from './logger.js';
+import logger from '../utils/logger.js';
 
 const TIMEZONE = 'Asia/Jakarta';
 let groupTask = null;
@@ -10,7 +10,7 @@ const nowInJakarta = () => {
         timeZone: TIMEZONE,
         hour12: false,
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
     });
     const stamp = now.toLocaleString('sv-SE', {
         timeZone: TIMEZONE,
@@ -19,7 +19,7 @@ const nowInJakarta = () => {
         day: '2-digit',
         hour: '2-digit',
         minute: '2-digit',
-        hour12: false
+        hour12: false,
     });
     return { time, stamp };
 };
@@ -34,7 +34,9 @@ const applyGroupState = async (sock, group, type, desiredState, stamp) => {
         await group.save();
         logger.info(`[GROUP-SCHEDULER] ${type.toUpperCase()} executed for ${group.jid}`);
     } catch (err) {
-        logger.error(`[GROUP-SCHEDULER] ${type.toUpperCase()} failed for ${group.jid}: ${err.message}`);
+        logger.error(
+            `[GROUP-SCHEDULER] ${type.toUpperCase()} failed for ${group.jid}: ${err.message}`
+        );
     }
 };
 
@@ -49,10 +51,7 @@ export const startGroupScheduler = (getSocket) => {
             const now = nowInJakarta();
 
             const groups = await Group.find({
-                $or: [
-                    { autoOpen: true },
-                    { autoClose: true }
-                ]
+                $or: [{ autoOpen: true }, { autoClose: true }],
             });
 
             if (!groups.length) return;

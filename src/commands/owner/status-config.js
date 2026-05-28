@@ -8,11 +8,15 @@ export default [
         description: 'On/Off auto view status orang lain',
         category: 'Owner',
         execute: async (sock, m, args, text) => {
-            let botSettings = await Settings.findOne({ id: 'bot_settings' }) || await Settings.create({ id: 'bot_settings' });
+            let botSettings =
+                (await Settings.findOne({ id: 'bot_settings' })) ||
+                (await Settings.create({ id: 'bot_settings' }));
             botSettings.autoStatusRead = !botSettings.autoStatusRead;
             await botSettings.save();
             clearSettingsCache();
-            m.reply(` Auto View Status berhasil ${botSettings.autoStatusRead ? '*DIAKTIFKAN*' : '*DIMATIKAN*'}`);
-        }
-    }
+            m.reply(
+                ` Auto View Status berhasil ${botSettings.autoStatusRead ? '*DIAKTIFKAN*' : '*DIMATIKAN*'}`
+            );
+        },
+    },
 ];

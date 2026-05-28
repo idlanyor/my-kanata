@@ -1,3 +1,4 @@
+import logger from '../../utils/logger.js';
 export default {
     name: 'ceknews',
     description: 'Cek metadata newsletter via link',
@@ -10,7 +11,7 @@ export default {
             m.reply(` Menarik data Saluran untuk kode: ${code}...`);
             const metadata = await sock.newsletterMetadata('invite', code);
             const tm = metadata.thread_metadata;
-            
+
             let resText = ` *Metadata Saluran*\n\n`;
             resText += `➛ *Nama:* ${tm?.name?.text || 'Gak tau'}\n`;
             resText += `➛ *JID:* ${metadata.id}\n`;
@@ -20,10 +21,10 @@ export default {
             resText += `➛ *Deskripsi:* \n${tm?.description?.text || '-'}`;
 
             m.reply(resText);
-            console.log('[DEBUG] Newsletter Metadata:', metadata);
+            logger.info('[DEBUG] Newsletter Metadata:', metadata);
         } catch (err) {
-            console.error(err);
+            logger.error(err);
             m.reply(` Gagal mendapatkan metadata. Pesan: ${err.message}`);
         }
-    }
+    },
 };

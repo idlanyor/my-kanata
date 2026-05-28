@@ -11,30 +11,33 @@ export default {
             const quoted = m.quoted ? m.quoted : m;
             const msg = quoted.msg || quoted;
             const mime = msg.mimetype || '';
-            
+
             if (!mime) {
-                return m.reply(`Reply to an image, video, audio, sticker, or document with *${settings.prefix}tourl*`);
+                return m.reply(
+                    `Reply to an image, video, audio, sticker, or document with *${settings.prefix}tourl*`
+                );
             }
 
             await m.react('⏳');
 
             const buffer = await m.downloadMediaMessage(quoted);
-            
+
             const ext = mime.split('/')[1]?.split(';')[0] || 'bin';
             const filename = msg.fileName || msg.filename || `file_${Date.now()}.${ext}`;
 
             const { url, response } = await uploadBufferToKanata(buffer, {
                 filename,
                 mimeType: mime,
-                timeout: 60000
+                timeout: 60000,
             });
 
             if (url) {
                 const { filename: responseFilename, content_type, original_filename } = response;
-                const caption = ` *Upload Success*\n\n` +
-                                ` *URL:* ${url}\n` +
-                                ` *File Name:* ${original_filename || responseFilename || filename}\n` +
-                                ` *Mime Type:* ${content_type}`;
+                const caption =
+                    ` *Upload Success*\n\n` +
+                    ` *URL:* ${url}\n` +
+                    ` *File Name:* ${original_filename || responseFilename || filename}\n` +
+                    ` *Mime Type:* ${content_type}`;
 
                 const payload = {
                     text: caption,
@@ -45,10 +48,10 @@ export default {
                             name: 'cta_copy',
                             buttonParamsJson: JSON.stringify({
                                 display_text: 'Copy URL',
-                                copy_code: url
-                            })
-                        }
-                    ]
+                                copy_code: url,
+                            }),
+                        },
+                    ],
                 };
 
                 if (typeof sock.sendInteractiveButtons === 'function') {
@@ -64,11 +67,10 @@ export default {
             } else {
                 throw new Error('Failed to get URL from response');
             }
-
         } catch (error) {
             console.error('Error in tourl command:', error);
             await m.react('❌');
             await m.reply(' Failed to upload media. Please try again later.');
         }
-    }
+    },
 };

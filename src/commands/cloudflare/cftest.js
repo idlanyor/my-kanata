@@ -1,4 +1,4 @@
-import { listRules, listDnsRecords } from '../../lib/cloudflare.js';
+import { listRules, listDnsRecords } from '../../services/cloudflare.js';
 import Settings from '../../database/models/Settings.js';
 
 export default {
@@ -8,9 +8,11 @@ export default {
     category: 'Cloudflare',
     execute: async (sock, m, args) => {
         const botSettings = await Settings.findOne({ id: 'bot_settings' });
-        
+
         if (!botSettings || (!botSettings.cfToken && !process.env.CLOUDFLARE_API_TOKEN)) {
-            return m.reply('❌ Token Cloudflare belum dikonfigurasi. Gunakan `.cfset token <key>`.');
+            return m.reply(
+                '❌ Token Cloudflare belum dikonfigurasi. Gunakan `.cfset token <key>`.'
+            );
         }
 
         await m.react('⏳');
@@ -42,7 +44,8 @@ export default {
                     await listDnsRecords(zone.zoneId, 1);
                     report += `➛ *${zone.domain}:* ✅ Valid\n`;
                 } catch (err) {
-                    const errMsg = err.response?.data?.errors?.[0]?.message || 'Invalid Zone ID/Permission';
+                    const errMsg =
+                        err.response?.data?.errors?.[0]?.message || 'Invalid Zone ID/Permission';
                     report += `➛ *${zone.domain}:* ❌ Error\n`;
                     report += `   _ID: ${zone.zoneId}_\n`;
                     report += `   _Note: ${errMsg}_\n`;
@@ -60,5 +63,5 @@ export default {
 
         await m.reply(report);
         await m.react(hasError ? '❌' : '✅');
-    }
+    },
 };

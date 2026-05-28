@@ -4,8 +4,8 @@ const lrclib = axios.create({
     baseURL: 'https://lrclib.net/api',
     timeout: 30000,
     headers: {
-        'User-Agent': 'mybot/1.0 (lyrics lookup via LRCLIB)'
-    }
+        'User-Agent': 'mybot/1.0 (lyrics lookup via LRCLIB)',
+    },
 });
 
 const MAX_MESSAGE_LENGTH = 3500;
@@ -40,7 +40,7 @@ const buildHeader = (song, note = '') => {
         `• Artis: ${song.artistName || '-'}`,
         `• Album: ${song.albumName || '-'}`,
         `• Durasi: ${formatDuration(Number(song.duration))}`,
-        `• Instrumental: ${song.instrumental ? 'Ya' : 'Tidak'}`
+        `• Instrumental: ${song.instrumental ? 'Ya' : 'Tidak'}`,
     ];
 
     if (note) lines.push(`• Info: ${note}`);
@@ -52,7 +52,7 @@ const parseInput = (text = '') => {
     if (!trimmed) return null;
 
     if (trimmed.includes('|')) {
-        const [trackName, artistName] = trimmed.split('|').map(part => part.trim());
+        const [trackName, artistName] = trimmed.split('|').map((part) => part.trim());
         if (trackName && artistName) {
             return { mode: 'exact', trackName, artistName };
         }
@@ -65,8 +65,8 @@ const getExactLyrics = async ({ trackName, artistName }) => {
     const { data } = await lrclib.get('/get', {
         params: {
             track_name: trackName,
-            artist_name: artistName
-        }
+            artist_name: artistName,
+        },
     });
 
     return data;
@@ -74,7 +74,7 @@ const getExactLyrics = async ({ trackName, artistName }) => {
 
 const searchLyrics = async (query) => {
     const { data } = await lrclib.get('/search', {
-        params: { q: query }
+        params: { q: query },
     });
 
     return Array.isArray(data) ? data : [];
@@ -92,12 +92,12 @@ export default {
         if (!rawInput) {
             return m.reply(
                 '*PENCARI LIRIK*\n\n' +
-                'Gunakan:\n' +
-                '• .lirik <judul atau potongan lirik>\n' +
-                '• .lirik <judul> | <artis>\n\n' +
-                'Contoh:\n' +
-                '• .lirik bohemian rhapsody\n' +
-                '• .lirik bohemian rhapsody | queen'
+                    'Gunakan:\n' +
+                    '• .lirik <judul atau potongan lirik>\n' +
+                    '• .lirik <judul> | <artis>\n\n' +
+                    'Contoh:\n' +
+                    '• .lirik bohemian rhapsody\n' +
+                    '• .lirik bohemian rhapsody | queen'
             );
         }
 
@@ -114,7 +114,9 @@ export default {
                     note = 'Pencocokan presisi berdasarkan judul + artis';
                 } catch (error) {
                     if (error.response?.status !== 404) throw error;
-                    const searchResults = await searchLyrics(`${input.trackName} ${input.artistName}`);
+                    const searchResults = await searchLyrics(
+                        `${input.trackName} ${input.artistName}`
+                    );
                     song = searchResults[0] || null;
                     note = 'Hasil presisi tidak ketemu, menampilkan hasil pencarian terdekat';
                 }
@@ -143,7 +145,10 @@ export default {
             await m.reply(header);
 
             for (let index = 0; index < lyricChunks.length; index += 1) {
-                const prefix = lyricChunks.length > 1 ? `*LIRIK (${index + 1}/${lyricChunks.length})*\n\n` : '*LIRIK*\n\n';
+                const prefix =
+                    lyricChunks.length > 1
+                        ? `*LIRIK (${index + 1}/${lyricChunks.length})*\n\n`
+                        : '*LIRIK*\n\n';
                 await m.reply(prefix + lyricChunks[index]);
             }
             await m.react('✅');
@@ -163,5 +168,5 @@ export default {
             await m.react('❌');
             return m.reply(`Gagal mencari lirik: ${error.message}`);
         }
-    }
+    },
 };

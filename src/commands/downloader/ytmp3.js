@@ -1,4 +1,5 @@
 import { fetchAPI } from '../../lib/api.js';
+import logger from '../../utils/logger.js';
 
 export default {
     name: 'ytmp3',
@@ -7,33 +8,39 @@ export default {
     category: 'Downloader',
     execute: async (sock, m, args, text) => {
         if (!text) return m.reply('Please provide a YouTube URL.');
-        
-        // console.log(`[DEBUG] ytmp3 triggered for URL: ${text}`);
+
+        // logger.info(`[DEBUG] ytmp3 triggered for URL: ${text}`);
         await m.react('⏳');
-        
+
         try {
-            // console.log(`[DEBUG] Fetching audio API for: ${text}`);
-            const data = await fetchAPI('https://api.ryzumi.net/api/downloader/ytmp3', { url: text });
-            
+            // logger.info(`[DEBUG] Fetching audio API for: ${text}`);
+            const data = await fetchAPI('https://api.ryzumi.net/api/downloader/ytmp3', {
+                url: text,
+            });
+
             if (!data || typeof data.url !== 'string') {
-                // console.log(`[DEBUG] ytmp3 API Failure:`, data);
+                // logger.info(`[DEBUG] ytmp3 API Failure:`, data);
                 await m.react('❌');
                 return m.reply('Failed to fetch YouTube audio. Make sure the URL is valid.');
             }
 
-            // console.log(`[DEBUG] ytmp3 success, sending audio from: ${data.url.substring(0, 50)}...`);
-            await sock.sendMessage(m.chat, { 
-                audio: { url: data.url }, 
-                mimetype: 'audio/mpeg',
-                fileName: `${data.title || 'audio'}.mp3`
-            }, { quoted: m });
+            // logger.info(`[DEBUG] ytmp3 success, sending audio from: ${data.url.substring(0, 50)}...`);
+            await sock.sendMessage(
+                m.chat,
+                {
+                    audio: { url: data.url },
+                    mimetype: 'audio/mpeg',
+                    fileName: `${data.title || 'audio'}.mp3`,
+                },
+                { quoted: m }
+            );
             await m.react('✅');
-            
-            // console.log(`[DEBUG] ytmp3 sent successfully`);
+
+            // logger.info(`[DEBUG] ytmp3 sent successfully`);
         } catch (err) {
-            console.error(`[DEBUG] ytmp3 error:`, err);
+            logger.error(`[DEBUG] ytmp3 error:`, err);
             await m.react('❌');
             await m.reply(' An error occurred while fetching the audio.');
         }
-    }
+    },
 };

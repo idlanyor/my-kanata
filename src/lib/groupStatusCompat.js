@@ -3,7 +3,8 @@ import { generateWAMessageContent, generateWAMessageFromContent } from 'baileys'
 
 const MEDIA_KEYS = ['image', 'video', 'audio', 'document', 'sticker'];
 
-const hasMediaKey = (content) => MEDIA_KEYS.some((key) => Object.prototype.hasOwnProperty.call(content, key));
+const hasMediaKey = (content) =>
+    MEDIA_KEYS.some((key) => Object.prototype.hasOwnProperty.call(content, key));
 
 const buildMessageContent = async (sock, content = {}) => {
     if (content?.message) {
@@ -50,7 +51,9 @@ const buildMessageContent = async (sock, content = {}) => {
     }
 
     if (!('text' in normalized) && !hasMediaKey(normalized)) {
-        throw new Error(`Unsupported group status payload: ${Object.keys(normalized).join(', ') || 'empty payload'}`);
+        throw new Error(
+            `Unsupported group status payload: ${Object.keys(normalized).join(', ') || 'empty payload'}`
+        );
     }
 
     return await generateWAMessageContent(normalized, generationOptions);
@@ -60,21 +63,25 @@ const relayGroupStatus = async (sock, groupJid, content, options = {}) => {
     const builtContent = await buildMessageContent(sock, content);
     const messageSecret = crypto.randomBytes(32);
 
-    const msg = generateWAMessageFromContent(groupJid, {
-        messageContextInfo: { messageSecret },
-        groupStatusMessageV2: {
-            message: {
-                ...builtContent,
-                messageContextInfo: {
-                    ...(builtContent.messageContextInfo || {}),
-                    messageSecret,
+    const msg = generateWAMessageFromContent(
+        groupJid,
+        {
+            messageContextInfo: { messageSecret },
+            groupStatusMessageV2: {
+                message: {
+                    ...builtContent,
+                    messageContextInfo: {
+                        ...(builtContent.messageContextInfo || {}),
+                        messageSecret,
+                    },
                 },
             },
         },
-    }, {
-        userJid: sock.user?.id,
-        messageId: options.messageId,
-    });
+        {
+            userJid: sock.user?.id,
+            messageId: options.messageId,
+        }
+    );
 
     const relayOptions = { ...options };
     delete relayOptions.messageId;

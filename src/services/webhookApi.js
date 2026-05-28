@@ -2,7 +2,7 @@ import http from 'http';
 import { Server } from 'socket.io';
 import crypto from 'crypto';
 import url from 'url';
-import logger from './logger.js';
+import logger from '\.\./utils/logger\.js';
 import * as financeService from './financeService.js';
 import { jadibotService } from './jadibotService.js';
 import User from '../database/models/User.js';
@@ -10,7 +10,7 @@ import bcrypt from 'bcrypt';
 import { settings } from '../config/settings.js';
 import * as cloudflare from './cloudflare.js';
 import { getCachedSettings } from '../handlers/messageFlow.js';
-import { decodeJid } from './serialize.js';
+import { decodeJid } from '\.\./utils/serialize\.js';
 
 const DEFAULT_PORT = 8787;
 const MAX_BODY_BYTES = 1 * 1024 * 1024; // Increased to 1MB for image/audio data
@@ -24,36 +24,37 @@ const isOwner = async (jid) => {
     const botSettings = await getCachedSettings();
     const ownerJid = decodeJid(settings.ownerNumber);
     const ownerLid = settings.ownerLid ? decodeJid(settings.ownerLid) : null;
-    
+
     const staticOwners = [ownerJid, ownerLid].filter(Boolean);
-    const dbOwners = (botSettings.owners || []).map(o => decodeJid(o));
-    
+    const dbOwners = (botSettings.owners || []).map((o) => decodeJid(o));
+
     const normalizedJid = decodeJid(jid);
     return [...staticOwners, ...dbOwners].includes(normalizedJid);
 };
 
-const readJsonBody = (req) => new Promise((resolve, reject) => {
-    let body = '';
-    let size = 0;
-    req.on('data', (chunk) => {
-        size += chunk.length;
-        if (size > MAX_BODY_BYTES) {
-            reject(new Error('Payload too large'));
-            req.destroy();
-            return;
-        }
-        body += chunk;
+const readJsonBody = (req) =>
+    new Promise((resolve, reject) => {
+        let body = '';
+        let size = 0;
+        req.on('data', (chunk) => {
+            size += chunk.length;
+            if (size > MAX_BODY_BYTES) {
+                reject(new Error('Payload too large'));
+                req.destroy();
+                return;
+            }
+            body += chunk;
+        });
+        req.on('end', () => {
+            if (!body) return resolve({});
+            try {
+                resolve(JSON.parse(body));
+            } catch {
+                reject(new Error('Invalid JSON body'));
+            }
+        });
+        req.on('error', reject);
     });
-    req.on('end', () => {
-        if (!body) return resolve({});
-        try {
-            resolve(JSON.parse(body));
-        } catch {
-            reject(new Error('Invalid JSON body'));
-        }
-    });
-    req.on('error', reject);
-});
 
 const respond = (res, statusCode, payload) => {
     res.writeHead(statusCode, { 'content-type': 'application/json; charset=utf-8' });
@@ -152,21 +153,28 @@ export const startWebhookApi = ({ getSocket }) => {
             if (pathname === '/api/webhook/auth/login' && method === 'POST') {
                 const body = await readJsonBody(req);
                 const { username, password } = body;
-                if (!username || !password) return respond(res, 400, { ok: false, error: 'Username and password are required' });
+                if (!username || !password)
+                    return respond(res, 400, {
+                        ok: false,
+                        error: 'Username and password are required',
+                    });
 
                 // Bersihkan username dari karakter non-digit
                 const cleanNumber = username.replace(/\D/g, '');
-                
+
                 // Cari user di database berdasarkan JID atau phoneNumber
-                const user = await User.findOne({ 
+                const user = await User.findOne({
                     $or: [
                         { jid: { $regex: new RegExp(`^${cleanNumber}(:|@)`) } },
-                        { phoneNumber: cleanNumber }
-                    ]
+                        { phoneNumber: cleanNumber },
+                    ],
                 });
 
                 if (!user || !user.webPassword) {
-                    return respond(res, 401, { ok: false, error: 'Invalid credentials or web access not enabled' });
+                    return respond(res, 401, {
+                        ok: false,
+                        error: 'Invalid credentials or web access not enabled',
+                    });
                 }
 
                 const match = await bcrypt.compare(password, user.webPassword);
@@ -174,14 +182,14 @@ export const startWebhookApi = ({ getSocket }) => {
                     return respond(res, 401, { ok: false, error: 'Invalid credentials' });
                 }
 
-                return respond(res, 200, { 
-                    ok: true, 
-                    data: { 
-                        userId: user.jid, 
+                return respond(res, 200, {
+                    ok: true,
+                    data: {
+                        userId: user.jid,
                         username: user.name || username,
                         whatsappNumber: user.jid.split('@')[0],
-                        isOwner: await isOwner(user.jid)
-                    } 
+                        isOwner: await isOwner(user.jid),
+                    },
                 });
             }
 
@@ -191,10 +199,13 @@ export const startWebhookApi = ({ getSocket }) => {
                 if (method !== 'GET') {
                     body = await readJsonBody(req);
                 }
-                
+
                 const userId = method === 'GET' ? parsedUrl.query.userId : body.userId;
-                if (!userId || !await isOwner(userId)) {
-                    return respond(res, 403, { ok: false, error: 'Forbidden: Only owner can access Cloudflare features' });
+                if (!userId || !(await isOwner(userId))) {
+                    return respond(res, 403, {
+                        ok: false,
+                        error: 'Forbidden: Only owner can access Cloudflare features',
+                    });
                 }
 
                 if (pathname === '/api/webhook/cloudflare/zones' && method === 'GET') {
@@ -204,15 +215,23 @@ export const startWebhookApi = ({ getSocket }) => {
 
                 if (pathname === '/api/webhook/cloudflare/dns' && method === 'GET') {
                     const { zoneId, page } = parsedUrl.query;
-                    if (!zoneId) return respond(res, 400, { ok: false, error: 'zoneId is required' });
+                    if (!zoneId)
+                        return respond(res, 400, { ok: false, error: 'zoneId is required' });
                     const records = await cloudflare.listDnsRecords(zoneId, page || 1);
                     return respond(res, 200, { ok: true, data: records });
                 }
 
                 if (pathname === '/api/webhook/cloudflare/dns' && method === 'POST') {
                     const { zoneId, type, name, content, proxied } = body;
-                    if (!zoneId || !type || !name || !content) return respond(res, 400, { ok: false, error: 'Missing required fields' });
-                    const result = await cloudflare.addDnsRecord(zoneId, type, name, content, !!proxied);
+                    if (!zoneId || !type || !name || !content)
+                        return respond(res, 400, { ok: false, error: 'Missing required fields' });
+                    const result = await cloudflare.addDnsRecord(
+                        zoneId,
+                        type,
+                        name,
+                        content,
+                        !!proxied
+                    );
                     return respond(res, 200, { ok: true, data: result });
                 }
 
@@ -224,7 +243,8 @@ export const startWebhookApi = ({ getSocket }) => {
 
                 if (pathname === '/api/webhook/cloudflare/rules' && method === 'POST') {
                     const { ip, mode, notes } = body;
-                    if (!ip || !mode) return respond(res, 400, { ok: false, error: 'ip and mode are required' });
+                    if (!ip || !mode)
+                        return respond(res, 400, { ok: false, error: 'ip and mode are required' });
                     const result = await cloudflare.createRule(ip, mode, notes);
                     return respond(res, 200, { ok: true, data: result });
                 }
@@ -239,46 +259,53 @@ export const startWebhookApi = ({ getSocket }) => {
 
             // User Management Endpoints
             if (pathname.startsWith('/api/webhook/users')) {
-                const userId = method === 'GET' ? parsedUrl.query.userId : (await readJsonBody(req)).userId;
-                if (!userId || !await isOwner(userId)) {
-                    return respond(res, 403, { ok: false, error: 'Forbidden: Only owner can access User Management' });
+                const userId =
+                    method === 'GET' ? parsedUrl.query.userId : (await readJsonBody(req)).userId;
+                if (!userId || !(await isOwner(userId))) {
+                    return respond(res, 403, {
+                        ok: false,
+                        error: 'Forbidden: Only owner can access User Management',
+                    });
                 }
 
                 if (pathname === '/api/webhook/users/list' && method === 'GET') {
                     const page = parseInt(parsedUrl.query.page) || 1;
                     const limit = parseInt(parsedUrl.query.limit) || 20;
                     const search = parsedUrl.query.search || '';
-                    
-                    const query = search ? { 
-                        $or: [
-                            { jid: { $regex: search, $options: 'i' } },
-                            { name: { $regex: search, $options: 'i' } },
-                            { phoneNumber: { $regex: search, $options: 'i' } }
-                        ] 
-                    } : {};
+
+                    const query = search
+                        ? {
+                              $or: [
+                                  { jid: { $regex: search, $options: 'i' } },
+                                  { name: { $regex: search, $options: 'i' } },
+                                  { phoneNumber: { $regex: search, $options: 'i' } },
+                              ],
+                          }
+                        : {};
 
                     const users = await User.find(query)
                         .limit(limit)
                         .skip((page - 1) * limit)
                         .sort({ createdAt: -1 });
-                    
+
                     const total = await User.countDocuments(query);
-                    
-                    return respond(res, 200, { 
-                        ok: true, 
-                        data: { 
-                            users, 
-                            total, 
-                            page, 
-                            totalPages: Math.ceil(total / limit) 
-                        } 
+
+                    return respond(res, 200, {
+                        ok: true,
+                        data: {
+                            users,
+                            total,
+                            page,
+                            totalPages: Math.ceil(total / limit),
+                        },
                     });
                 }
 
                 if (pathname === '/api/webhook/users/update' && method === 'POST') {
                     const body = await readJsonBody(req);
                     const { targetJid, balance, role, name, emailCloud, phoneNumber } = body;
-                    if (!targetJid) return respond(res, 400, { ok: false, error: 'targetJid is required' });
+                    if (!targetJid)
+                        return respond(res, 400, { ok: false, error: 'targetJid is required' });
 
                     const updateData = {};
                     if (balance !== undefined) updateData.balance = parseInt(balance);
@@ -287,16 +314,23 @@ export const startWebhookApi = ({ getSocket }) => {
                     if (emailCloud !== undefined) updateData.emailCloud = emailCloud;
                     if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
 
-                    const user = await User.findOneAndUpdate({ jid: targetJid }, updateData, { new: true, upsert: true });
+                    const user = await User.findOneAndUpdate({ jid: targetJid }, updateData, {
+                        new: true,
+                        upsert: true,
+                    });
                     return respond(res, 200, { ok: true, data: user });
                 }
             }
 
             // Bot Settings Endpoints
             if (pathname.startsWith('/api/webhook/settings')) {
-                const userId = method === 'GET' ? parsedUrl.query.userId : (await readJsonBody(req)).userId;
-                if (!userId || !await isOwner(userId)) {
-                    return respond(res, 403, { ok: false, error: 'Forbidden: Only owner can access Bot Settings' });
+                const userId =
+                    method === 'GET' ? parsedUrl.query.userId : (await readJsonBody(req)).userId;
+                if (!userId || !(await isOwner(userId))) {
+                    return respond(res, 403, {
+                        ok: false,
+                        error: 'Forbidden: Only owner can access Bot Settings',
+                    });
                 }
 
                 if (pathname === '/api/webhook/settings' && method === 'GET') {
@@ -307,12 +341,16 @@ export const startWebhookApi = ({ getSocket }) => {
                 if (pathname === '/api/webhook/settings/update' && method === 'POST') {
                     const body = await readJsonBody(req);
                     const updateableFields = [
-                        'mode', 'autoStatusRead', 'autoAiPrivate', 'mustJoinGroup', 
-                        'groupInviteLink', 'privateAiPersona'
+                        'mode',
+                        'autoStatusRead',
+                        'autoAiPrivate',
+                        'mustJoinGroup',
+                        'groupInviteLink',
+                        'privateAiPersona',
                     ];
-                    
+
                     const updateData = {};
-                    updateableFields.forEach(field => {
+                    updateableFields.forEach((field) => {
                         if (body[field] !== undefined) {
                             updateData[field] = body[field];
                         }
@@ -327,36 +365,48 @@ export const startWebhookApi = ({ getSocket }) => {
                         updateData,
                         { new: true, upsert: true }
                     );
-                    
+
                     const { clearSettingsCache } = await import('../handlers/messageHandler.js');
                     clearSettingsCache();
-                    
+
                     return respond(res, 200, { ok: true, data: updated });
                 }
             }
 
             // WhatsApp Messaging Endpoints
-            if (method === 'POST' && (pathname === '/api/webhook/send-text' || pathname === '/api/webhook/send-document')) {
+            if (
+                method === 'POST' &&
+                (pathname === '/api/webhook/send-text' || pathname === '/api/webhook/send-document')
+            ) {
                 const body = await readJsonBody(req);
                 const sock = getSocket();
                 if (!sock) return respond(res, 503, { ok: false, error: 'Bot socket unavailable' });
 
                 const to = normalizeJid(body.to);
-                if (!to) return respond(res, 400, { ok: false, error: 'Invalid payload. Required: to' });
+                if (!to)
+                    return respond(res, 400, { ok: false, error: 'Invalid payload. Required: to' });
 
                 let result;
                 if (pathname === '/api/webhook/send-text') {
                     const text = typeof body.text === 'string' ? body.text.trim() : '';
-                    if (!text) return respond(res, 400, { ok: false, error: 'Invalid payload. Required: text' });
+                    if (!text)
+                        return respond(res, 400, {
+                            ok: false,
+                            error: 'Invalid payload. Required: text',
+                        });
                     result = await sock.sendMessage(to, { text });
                 } else {
                     const documentBuffer = decodeBase64Data(body.data);
-                    if (!documentBuffer) return respond(res, 400, { ok: false, error: 'Invalid payload. Required: base64 data' });
+                    if (!documentBuffer)
+                        return respond(res, 400, {
+                            ok: false,
+                            error: 'Invalid payload. Required: base64 data',
+                        });
                     result = await sock.sendMessage(to, {
                         document: documentBuffer,
                         mimetype: body.mimetype || 'application/pdf',
                         fileName: body.fileName || 'document.pdf',
-                        caption: body.caption || ''
+                        caption: body.caption || '',
                     });
                 }
                 return respond(res, 200, { ok: true, data: { to, messageId: result?.key?.id } });
@@ -366,10 +416,10 @@ export const startWebhookApi = ({ getSocket }) => {
             if (pathname === '/api/webhook/finance/report' && method === 'GET') {
                 const { userId, month, year, type, category, startDate, endDate } = parsedUrl.query;
                 if (!userId) return respond(res, 400, { ok: false, error: 'userId is required' });
-                
+
                 const report = await financeService.getMonthlyReport(
-                    userId, 
-                    month ? parseInt(month) - 1 : undefined, 
+                    userId,
+                    month ? parseInt(month) - 1 : undefined,
                     year ? parseInt(year) : undefined,
                     { type, category, startDate, endDate }
                 );
@@ -383,12 +433,35 @@ export const startWebhookApi = ({ getSocket }) => {
 
                 let result;
                 if (text || fileBase64) {
-                    const fileData = fileBase64 ? { buffer: decodeBase64Data(fileBase64), mimeType: mimeType || 'image/jpeg' } : null;
-                    result = await financeService.processAiTransaction(userId, userName || 'Web User', text, fileData);
+                    const fileData = fileBase64
+                        ? {
+                              buffer: decodeBase64Data(fileBase64),
+                              mimeType: mimeType || 'image/jpeg',
+                          }
+                        : null;
+                    result = await financeService.processAiTransaction(
+                        userId,
+                        userName || 'Web User',
+                        text,
+                        fileData
+                    );
                 } else {
                     const { type, amount, category, description, date, kakeiboCategory } = body;
-                    if (!type || !amount) return respond(res, 400, { ok: false, error: 'type and amount are required' });
-                    const tx = await financeService.addTransaction({ userId, userName: userName || 'Web User', type, amount, category, description, date, kakeiboCategory });
+                    if (!type || !amount)
+                        return respond(res, 400, {
+                            ok: false,
+                            error: 'type and amount are required',
+                        });
+                    const tx = await financeService.addTransaction({
+                        userId,
+                        userName: userName || 'Web User',
+                        type,
+                        amount,
+                        category,
+                        description,
+                        date,
+                        kakeiboCategory,
+                    });
                     result = { success: true, transactions: [tx] };
                 }
                 return respond(res, 200, { ok: true, data: result });
@@ -404,9 +477,22 @@ export const startWebhookApi = ({ getSocket }) => {
 
             if (pathname === '/api/webhook/finance/update' && method === 'POST') {
                 const body = await readJsonBody(req);
-                const { userId, transactionId, type, amount, category, description, date, kakeiboCategory } = body;
-                if (!userId || !transactionId) return respond(res, 400, { ok: false, error: 'userId and transactionId are required' });
-                
+                const {
+                    userId,
+                    transactionId,
+                    type,
+                    amount,
+                    category,
+                    description,
+                    date,
+                    kakeiboCategory,
+                } = body;
+                if (!userId || !transactionId)
+                    return respond(res, 400, {
+                        ok: false,
+                        error: 'userId and transactionId are required',
+                    });
+
                 const updateData = {};
                 if (type) updateData.type = type;
                 if (amount) updateData.amount = amount;
@@ -415,15 +501,26 @@ export const startWebhookApi = ({ getSocket }) => {
                 if (kakeiboCategory !== undefined) updateData.kakeiboCategory = kakeiboCategory;
                 if (date) updateData.date = new Date(date);
 
-                const updated = await financeService.updateTransaction(userId, transactionId, updateData);
+                const updated = await financeService.updateTransaction(
+                    userId,
+                    transactionId,
+                    updateData
+                );
                 return respond(res, 200, { ok: !!updated, data: updated });
             }
 
             if (pathname === '/api/webhook/finance/detail' && method === 'GET') {
                 const { userId, transactionId } = parsedUrl.query;
-                if (!userId || !transactionId) return respond(res, 400, { ok: false, error: 'userId and transactionId are required' });
-                
-                const transaction = await financeService.Transaction.findOne({ _id: transactionId, userId });
+                if (!userId || !transactionId)
+                    return respond(res, 400, {
+                        ok: false,
+                        error: 'userId and transactionId are required',
+                    });
+
+                const transaction = await financeService.Transaction.findOne({
+                    _id: transactionId,
+                    userId,
+                });
                 return respond(res, 200, { ok: !!transaction, data: transaction });
             }
 
@@ -431,8 +528,8 @@ export const startWebhookApi = ({ getSocket }) => {
                 const { userId, month, year } = parsedUrl.query;
                 if (!userId) return respond(res, 400, { ok: false, error: 'userId is required' });
                 const data = await financeService.getKakeiboReport(
-                    userId, 
-                    month ? parseInt(month) - 1 : undefined, 
+                    userId,
+                    month ? parseInt(month) - 1 : undefined,
                     year ? parseInt(year) : undefined
                 );
                 return respond(res, 200, { ok: true, data });
@@ -441,9 +538,16 @@ export const startWebhookApi = ({ getSocket }) => {
             if (pathname === '/api/webhook/finance/budget' && method === 'POST') {
                 const body = await readJsonBody(req);
                 const { userId, month, year, incomeTarget, savingsTarget } = body;
-                if (!userId || !month || !year) return respond(res, 400, { ok: false, error: 'userId, month, and year are required' });
-                
-                const budget = await financeService.setBudget(userId, month, year, { incomeTarget, savingsTarget });
+                if (!userId || !month || !year)
+                    return respond(res, 400, {
+                        ok: false,
+                        error: 'userId, month, and year are required',
+                    });
+
+                const budget = await financeService.setBudget(userId, month, year, {
+                    incomeTarget,
+                    savingsTarget,
+                });
                 return respond(res, 200, { ok: true, data: budget });
             }
 
@@ -451,7 +555,8 @@ export const startWebhookApi = ({ getSocket }) => {
             if (pathname === '/api/webhook/jadibot/start' && method === 'POST') {
                 const body = await readJsonBody(req);
                 const { phoneNumber } = body;
-                if (!phoneNumber) return respond(res, 400, { ok: false, error: 'phoneNumber is required' });
+                if (!phoneNumber)
+                    return respond(res, 400, { ok: false, error: 'phoneNumber is required' });
                 const result = await jadibotService.startSession(phoneNumber);
                 return respond(res, 200, { ok: true, data: result });
             }
@@ -464,7 +569,8 @@ export const startWebhookApi = ({ getSocket }) => {
             if (pathname === '/api/webhook/jadibot/stop' && method === 'POST') {
                 const body = await readJsonBody(req);
                 const { phoneNumber } = body;
-                if (!phoneNumber) return respond(res, 400, { ok: false, error: 'phoneNumber is required' });
+                if (!phoneNumber)
+                    return respond(res, 400, { ok: false, error: 'phoneNumber is required' });
                 const result = await jadibotService.stopSession(phoneNumber);
                 return respond(res, 200, { ok: result.success, data: result });
             }
@@ -472,16 +578,22 @@ export const startWebhookApi = ({ getSocket }) => {
             return respond(res, 404, { ok: false, error: 'Not found' });
         } catch (err) {
             logger.error(`Webhook API error: ${err.message}`, 'WEBHOOK');
-            const status = err.message === 'Payload too large' || err.message === 'Invalid JSON body' ? 400 : 500;
-            return respond(res, status, { ok: false, error: err.message || 'Internal server error' });
+            const status =
+                err.message === 'Payload too large' || err.message === 'Invalid JSON body'
+                    ? 400
+                    : 500;
+            return respond(res, status, {
+                ok: false,
+                error: err.message || 'Internal server error',
+            });
         }
     });
 
     const io = new Server(server, {
         cors: {
-            origin: "*",
-            methods: ["GET", "POST"]
-        }
+            origin: '*',
+            methods: ['GET', 'POST'],
+        },
     });
 
     jadibotService.setIo(io);

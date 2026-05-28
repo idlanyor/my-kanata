@@ -14,8 +14,8 @@ class SmmService {
 
     get baseUrl() {
         // Pastikan tidak mereturn string "undefined" tapi default URL
-        return process.env.SMM_BASE_URL && process.env.SMM_BASE_URL !== 'undefined' 
-            ? process.env.SMM_BASE_URL 
+        return process.env.SMM_BASE_URL && process.env.SMM_BASE_URL !== 'undefined'
+            ? process.env.SMM_BASE_URL
             : 'https://indosmm.id/api/v2';
     }
 
@@ -24,7 +24,9 @@ class SmmService {
         const url = this.baseUrl;
 
         if (!key || key === 'undefined') {
-            return { error: 'SMM_API_KEY is not set in .env file. Please add it and run .reloadenv' };
+            return {
+                error: 'SMM_API_KEY is not set in .env file. Please add it and run .reloadenv',
+            };
         }
 
         const body = Object.entries({ key, ...params })
@@ -32,7 +34,7 @@ class SmmService {
             .join('&');
 
         const curlCmd = `curl -s -X POST "${url}" -d "${body}"`;
-        
+
         try {
             const { stdout } = await execAsync(curlCmd);
             if (!stdout) return { error: 'Empty response from SMM API' };
@@ -41,7 +43,9 @@ class SmmService {
             console.error('SMM API Error:', error);
             // Provide cleaner error for the user
             if (error.message.includes('Unexpected token')) {
-                return { error: 'API returned invalid JSON. Possible wrong API URL or Maintenance.' };
+                return {
+                    error: 'API returned invalid JSON. Possible wrong API URL or Maintenance.',
+                };
             }
             return { error: `Connection failed: ${error.message}` };
         }
@@ -56,18 +60,18 @@ class SmmService {
         const targetIds = [8746, 8505];
 
         return results
-            .filter(s => {
+            .filter((s) => {
                 const id = parseInt(s.id || s.service);
                 return targetIds.includes(id);
             })
-            .map(s => ({
+            .map((s) => ({
                 id: s.id || s.service,
                 category: s.category,
                 name: s.name || s.service,
                 originalPrice: parseFloat(s.price || s.rate || 0),
                 price: parseFloat(s.price || s.rate || 0) + this.markup,
                 min: parseInt(s.min || 0),
-                max: parseInt(s.max || 0)
+                max: parseInt(s.max || 0),
             }));
     }
 
@@ -76,20 +80,20 @@ class SmmService {
             action: 'add',
             service: serviceId,
             link: link,
-            quantity: quantity
+            quantity: quantity,
         });
     }
 
     async getStatus(orderId) {
         return await this.#callApi({
             action: 'status',
-            order: orderId
+            order: orderId,
         });
     }
 
     async getBalance() {
         return await this.#callApi({
-            action: 'balance'
+            action: 'balance',
         });
     }
 }

@@ -1,4 +1,5 @@
 import fs from 'fs';
+import logger from '../../utils/logger.js';
 
 export default {
     name: 'listimg',
@@ -10,56 +11,60 @@ export default {
 
         const sections = [
             {
-                title: "MENU BOT UTAMA",
+                title: 'MENU BOT UTAMA',
                 rows: [
-                    { title: "Ping", id: ".ping", description: "Cek kecepatan bot" },
-                    { title: "Menu", id: ".menu", description: "Tampilkan perintah" }
-                ]
+                    { title: 'Ping', id: '.ping', description: 'Cek kecepatan bot' },
+                    { title: 'Menu', id: '.menu', description: 'Tampilkan perintah' },
+                ],
             },
             {
-                title: "MENU EKSPERIMENTAL",
+                title: 'MENU EKSPERIMENTAL',
                 rows: [
-                    { title: "Vnote", id: ".vnote", description: "Kirim video note" },
-                    { title: "Button", id: ".button", description: "Tes tombol" }
-                ]
-            }
+                    { title: 'Vnote', id: '.vnote', description: 'Kirim video note' },
+                    { title: 'Button', id: '.button', description: 'Tes tombol' },
+                ],
+            },
         ];
 
         const interactiveMessage = {
             header: {
-                title: " KANATA MULTIMEDIA",
-                subtitle: "List with Image",
+                title: ' KANATA MULTIMEDIA',
+                subtitle: 'List with Image',
                 hasMediaAttachment: true,
-                image: imageBuffer // Fitur Kanata-Baileys: Bisa masukin buffer langsung di header!
+                image: imageBuffer, // Fitur Kanata-Baileys: Bisa masukin buffer langsung di header!
             },
             body: {
-                text: "Halo! Ini adalah List Menu dengan Header Gambar yang ditarik dari core library."
+                text: 'Halo! Ini adalah List Menu dengan Header Gambar yang ditarik dari core library.',
             },
             footer: {
-                text: "Power by Kanata-Baileys"
+                text: 'Power by Kanata-Baileys',
             },
             nativeFlowMessage: {
                 buttons: [
                     {
-                        name: "single_select",
+                        name: 'single_select',
                         buttonParamsJson: JSON.stringify({
-                            title: "Pilih Menu Gambar",
-                            sections: sections
-                        })
-                    }
-                ]
-            }
+                            title: 'Pilih Menu Gambar',
+                            sections: sections,
+                        }),
+                    },
+                ],
+            },
         };
 
         try {
-            await sock.sendMessage(m.chat, {
-                interactive: interactiveMessage,
-                viewOnce: true
-            }, { quoted: m });
-            console.log(`[DEBUG] List image message with AdReply sent.`);
+            await sock.sendMessage(
+                m.chat,
+                {
+                    interactive: interactiveMessage,
+                    viewOnce: true,
+                },
+                { quoted: m }
+            );
+            logger.info(`[DEBUG] List image message with AdReply sent.`);
         } catch (err) {
-            console.error('[ERROR] Failed to send list image:', err);
+            logger.error('[ERROR] Failed to send list image:', err);
             m.reply('Gagal mengirim List Gambar.');
         }
-    }
+    },
 };

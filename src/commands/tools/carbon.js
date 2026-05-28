@@ -1,5 +1,6 @@
 import { post } from '../../lib/api.js';
 import { settings } from '../../config/settings.js';
+import logger from '../../utils/logger.js';
 
 export default {
     name: 'carbon',
@@ -8,15 +9,19 @@ export default {
     category: 'Tools',
     execute: async (sock, m, args, text) => {
         if (!text && !m.quoted?.text) {
-            return sock.sendMessage(m.chat, { 
-                text: `Please provide the code or reply to a message.
-Example: ${settings.prefix}carbon console.log("Hello World")
+            return sock.sendMessage(
+                m.chat,
+                {
+                    text: `Please provide the code or reply to a message.
+Example: ${settings.prefix}carbon logger.info("Hello World")
 
 You can also use flags:
 --lang <language>
 --theme <theme>
---bg <color>` 
-            }, { quoted: m });
+--bg <color>`,
+                },
+                { quoted: m }
+            );
         }
 
         let code = m.quoted ? m.quoted.text : m.body.slice(m.arg[0].length).trim();
@@ -50,30 +55,37 @@ You can also use flags:
         await m.react('⏳');
 
         try {
-            const buffer = await post('/carbon', {
-                code,
-                lang,
-                theme,
-                bg
-            }, {
-                responseType: 'arraybuffer',
-                headers: {
-                    'accept': 'image/png',
-                    'Content-Type': 'application/json'
+            const buffer = await post(
+                '/carbon',
+                {
+                    code,
+                    lang,
+                    theme,
+                    bg,
+                },
+                {
+                    responseType: 'arraybuffer',
+                    headers: {
+                        accept: 'image/png',
+                        'Content-Type': 'application/json',
+                    },
                 }
-            });
+            );
 
-            await sock.sendMessage(m.chat, {
-                image: Buffer.from(buffer),
-                caption: `Carbonized Code (${lang})`
-            }, { quoted: m });
+            await sock.sendMessage(
+                m.chat,
+                {
+                    image: Buffer.from(buffer),
+                    caption: `Carbonized Code (${lang})`,
+                },
+                { quoted: m }
+            );
             await m.react('✅');
-
         } catch (error) {
-            console.error('Error in carbon command:', error);
+            logger.error('Error in carbon command:', error);
             await m.react('❌');
             await m.reply(`Failed to generate Carbon image.
 Error: ${error.message}`);
         }
-    }
+    },
 };

@@ -19,5 +19,5 @@ export default {
             await m.react('❌');
             await m.reply(errorMsg);
         }
-    }
+    },
 };

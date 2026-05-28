@@ -1,10 +1,9 @@
-
 import fs from 'fs';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import sharp from 'sharp';
 import { settings } from '../../config/settings.js';
-import { makeResultPath } from '../../lib/resultPath.js';
+import { makeResultPath } from '../../utils/resultPath.js';
 
 const getRandom = (ext) => {
     return `${Math.floor(Math.random() * 10000)}${ext}`;
@@ -70,7 +69,11 @@ export default {
             if (isAnimated) {
                 await sock.sendMessage(
                     m.chat,
-                    { video: mediaBuffer, mimetype: 'video/mp4', caption: 'Converted animated sticker to video' },
+                    {
+                        video: mediaBuffer,
+                        mimetype: 'video/mp4',
+                        caption: 'Converted animated sticker to video',
+                    },
                     { quoted: m }
                 );
             } else {
@@ -81,7 +84,6 @@ export default {
                 );
             }
             await m.react('✅');
-
         } catch (error) {
             console.error(error);
             await m.react('❌');
@@ -90,5 +92,5 @@ export default {
             if (inputPath && fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
             if (outPath && fs.existsSync(outPath)) fs.unlinkSync(outPath);
         }
-    }
+    },
 };

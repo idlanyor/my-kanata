@@ -13,7 +13,10 @@ export const resolveUploadedUrl = (payload = {}) => {
     );
 };
 
-export const uploadBufferToKanata = async (buffer, { filename, mimeType, timeout = 60000 } = {}) => {
+export const uploadBufferToKanata = async (
+    buffer,
+    { filename, mimeType, timeout = 60000 } = {}
+) => {
     if (!buffer || !buffer.length) {
         throw new Error('Media buffer kosong.');
     }
@@ -21,15 +24,15 @@ export const uploadBufferToKanata = async (buffer, { filename, mimeType, timeout
     const formData = new FormData();
     formData.append('file', buffer, {
         filename: filename || `file_${Date.now()}`,
-        contentType: mimeType || 'application/octet-stream'
+        contentType: mimeType || 'application/octet-stream',
     });
 
     const response = await axios.post('https://api.kanata.web.id/upload', formData, {
         headers: {
             ...formData.getHeaders(),
-            accept: 'application/json'
+            accept: 'application/json',
         },
-        timeout
+        timeout,
     });
 
     const url = resolveUploadedUrl(response.data);
@@ -39,6 +42,6 @@ export const uploadBufferToKanata = async (buffer, { filename, mimeType, timeout
 
     return {
         url,
-        response: response.data
+        response: response.data,
     };
 };

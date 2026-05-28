@@ -1,4 +1,4 @@
-import { getPteroUserByJid, updatePteroProfile } from '../../lib/pterodactyl.js';
+import { getPteroUserByJid, updatePteroProfile } from '../../services/pterodactyl.js';
 import { settings } from '../../config/settings.js';
 import User from '../../database/models/User.js';
 
@@ -14,7 +14,9 @@ export default {
             const balance = dbUser ? dbUser.balance : 0;
 
             if (!pteroUser) {
-                return m.reply(`Akun WhatsApp Anda belum terhubung ke Pterodactyl.\n\nSaldo Bot: Rp ${balance.toLocaleString()}\n\nGunakan ${settings.prefix}bind <email> untuk menghubungkan akun.`);
+                return m.reply(
+                    `Akun WhatsApp Anda belum terhubung ke Pterodactyl.\n\nSaldo Bot: Rp ${balance.toLocaleString()}\n\nGunakan ${settings.prefix}bind <email> untuk menghubungkan akun.`
+                );
             }
 
             const sub = args[0]?.toLowerCase();
@@ -25,17 +27,19 @@ export default {
 
                 const allowedFields = ['username', 'email', 'first_name', 'last_name'];
                 if (!field || !value || !allowedFields.includes(field)) {
-                    return m.reply(`Usage: ${settings.prefix}profile edit <field> <value>\nFields: ${allowedFields.join(', ')}`);
+                    return m.reply(
+                        `Usage: ${settings.prefix}profile edit <field> <value>\nFields: ${allowedFields.join(', ')}`
+                    );
                 }
 
                 await m.react('⏳');
-                
+
                 const updateData = {
                     email: pteroUser.email,
                     username: pteroUser.username,
                     first_name: pteroUser.first_name,
                     last_name: pteroUser.last_name,
-                    [field]: value
+                    [field]: value,
                 };
 
                 await updatePteroProfile(pteroUser.id, updateData);
@@ -54,11 +58,10 @@ export default {
             msg += `Contoh: ${settings.prefix}profile edit first_name Budi`;
 
             await m.reply(msg);
-
         } catch (error) {
             console.error(error);
             const detail = error.response?.data?.errors?.[0]?.detail || error.message;
             await m.reply(`Gagal mengambil/mengedit profile: ${detail}`);
         }
-    }
+    },
 };

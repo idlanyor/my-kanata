@@ -1,4 +1,4 @@
-import { getUserServers } from '../../lib/pterodactyl.js';
+import { getUserServers } from '../../services/pterodactyl.js';
 import { settings } from '../../config/settings.js';
 import Server from '../../database/models/Server.js';
 
@@ -14,7 +14,9 @@ export default {
 
             if (servers.length === 0) {
                 await m.react('❌');
-                return m.reply(`You don't have any servers yet or your account is not linked. Use ${settings.prefix}bind if you already have an account.`);
+                return m.reply(
+                    `You don't have any servers yet or your account is not linked. Use ${settings.prefix}bind if you already have an account.`
+                );
             }
 
             // Get expiration data from DB
@@ -22,9 +24,15 @@ export default {
 
             let msg = `*YOUR SERVERS*\n\n`;
             servers.forEach((s, i) => {
-                const dbSrv = dbServers.find(ds => ds.identifier === s.identifier);
-                const expiredStr = dbSrv ? dbSrv.expiredAt.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Indefinite';
-                
+                const dbSrv = dbServers.find((ds) => ds.identifier === s.identifier);
+                const expiredStr = dbSrv
+                    ? dbSrv.expiredAt.toLocaleDateString('id-ID', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric',
+                      })
+                    : 'Indefinite';
+
                 msg += `${i + 1}. *${s.name}*\n`;
                 msg += `   ID: ${s.identifier}\n`;
                 msg += `   RAM: ${s.limits.memory}MB\n`;
@@ -35,7 +43,7 @@ export default {
             });
 
             msg += `\nTo manage a server, use: ${settings.prefix}panel <identifier> <action>\nActions: start, stop, restart, status`;
-            
+
             await m.reply(msg);
             await m.react('✅');
         } catch (error) {
@@ -43,5 +51,5 @@ export default {
             await m.react('❌');
             await m.reply(`Error: ${error.message}`);
         }
-    }
+    },
 };

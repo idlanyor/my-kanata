@@ -17,9 +17,9 @@ function wrapText(ctx, text, maxWidth) {
 
     for (let i = 1; i < words.length; i++) {
         const word = words[i];
-        const width = ctx.measureText(currentLine + " " + word).width;
+        const width = ctx.measureText(currentLine + ' ' + word).width;
         if (width < maxWidth) {
-            currentLine += " " + word;
+            currentLine += ' ' + word;
         } else {
             lines.push(currentLine);
             currentLine = word;
@@ -48,8 +48,8 @@ export default {
 
             const size = 512;
             const padding = 60;
-            const maxWidth = size - (padding * 2);
-            
+            const maxWidth = size - padding * 2;
+
             // 1. Generate Frames
             for (let i = 0; i < words.length; i++) {
                 const currentText = words.slice(0, i + 1).join(' ');
@@ -72,7 +72,7 @@ export default {
                     ctx.font = `${fontSize}px sans-serif`;
                     testLines = wrapText(ctx, text, maxWidth);
                     const lineHeight = fontSize * 1.1;
-                    if ((testLines.length * lineHeight) < size - padding) break;
+                    if (testLines.length * lineHeight < size - padding) break;
                     fontSize -= 5;
                 } while (fontSize > 10);
 
@@ -80,10 +80,10 @@ export default {
                 const lines = wrapText(ctx, currentText, maxWidth);
                 const lineHeight = fontSize * 1.1;
                 const totalHeight = lines.length * lineHeight;
-                let startY = (size - totalHeight) / 2 + (lineHeight / 2);
+                let startY = (size - totalHeight) / 2 + lineHeight / 2;
 
                 lines.forEach((line, index) => {
-                    ctx.fillText(line, padding, startY + (index * lineHeight));
+                    ctx.fillText(line, padding, startY + index * lineHeight);
                 });
 
                 const framePath = path.join(tempDir, `frame_${String(i).padStart(3, '0')}.png`);
@@ -93,7 +93,7 @@ export default {
             // 2. Convert Frames directly to Animated WebP
             const stikerFile = getRandom('.webp');
             const stikerPath = path.resolve(stikerFile);
-            
+
             // Fix: remove -preset ultrafast (not supported by libwebp)
             // Use -q:v for quality and -loop 0 for infinite loop
             const ffmpegCmd = `ffmpeg -y -framerate 2 -i ${path.join(tempDir, 'frame_%03d.png')} -vf "scale=512:512:flags=lanczos,format=rgba" -loop 0 -vcodec libwebp -lossless 0 -q:v 70 ${stikerPath}`;
@@ -113,11 +113,10 @@ export default {
                 fs.rmSync(tempDir, { recursive: true, force: true });
                 if (fs.existsSync(stikerPath)) fs.unlinkSync(stikerPath);
             });
-
         } catch (error) {
             console.error('Error creating brat typing sticker:', error);
             await m.react('❌');
             await m.reply('Failed to create brat typing sticker.');
         }
-    }
+    },
 };

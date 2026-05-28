@@ -13,7 +13,9 @@ export default {
             const password = args[0];
 
             if (!password) {
-                return m.reply(`*INTEGRASI DASHBOARD WEB*\n\nGunakan perintah ini untuk mengatur password login ke dashboard web finansial kamu.\n\n*Cara Pakai:*\n.integrate <password_pilihan_kamu>\n\n*Detail Login Web:*\nUsername: \`${phoneNumber}\`\nPassword: (Sesuai yang kamu atur)\n\n_Catatan: Jangan berikan password ini kepada siapapun._`);
+                return m.reply(
+                    `*INTEGRASI DASHBOARD WEB*\n\nGunakan perintah ini untuk mengatur password login ke dashboard web finansial kamu.\n\n*Cara Pakai:*\n.integrate <password_pilihan_kamu>\n\n*Detail Login Web:*\nUsername: \`${phoneNumber}\`\nPassword: (Sesuai yang kamu atur)\n\n_Catatan: Jangan berikan password ini kepada siapapun._`
+                );
             }
 
             if (password.length < 6) {
@@ -29,11 +31,12 @@ export default {
                 { upsert: true }
             );
 
-            await m.reply(`*BERHASIL!*\n\nPassword dashboard web kamu telah diatur.\n\n*Link Web:* (Masukkan URL Web Kamu)\n*Username:* \`${phoneNumber}\`\n*Password:* \`${password}\`\n\nSilakan simpan data ini untuk login.`);
-
+            await m.reply(
+                `*BERHASIL!*\n\nPassword dashboard web kamu telah diatur.\n\n*Link Web:* (Masukkan URL Web Kamu)\n*Username:* \`${phoneNumber}\`\n*Password:* \`${password}\`\n\nSilakan simpan data ini untuk login.`
+            );
         } catch (error) {
             console.error('Integrate Error:', error);
             await m.reply('Terjadi kesalahan saat mengatur password integrasi.');
         }
-    }
+    },
 };

@@ -5,7 +5,7 @@ const extractInviteCode = (input = '') => {
     const patterns = [
         /chat\.whatsapp\.com\/(?:invite\/)?([0-9A-Za-z]{20,})/i,
         /whatsapp\.com\/(?:invite\/)?([0-9A-Za-z]{20,})/i,
-        /^([0-9A-Za-z]{20,})$/
+        /^([0-9A-Za-z]{20,})$/,
     ];
 
     for (const pattern of patterns) {
@@ -18,13 +18,16 @@ const extractInviteCode = (input = '') => {
 
 const formatList = (items = [], limit = 5) => {
     if (!Array.isArray(items) || items.length === 0) return '-';
-    return items.slice(0, limit).map((item) => {
-        if (typeof item === 'string') return item;
-        if (item?.id) return item.id;
-        if (item?.jid) return item.jid;
-        if (item?.name) return item.name;
-        return String(item);
-    }).join(', ');
+    return items
+        .slice(0, limit)
+        .map((item) => {
+            if (typeof item === 'string') return item;
+            if (item?.id) return item.id;
+            if (item?.jid) return item.jid;
+            if (item?.name) return item.name;
+            return String(item);
+        })
+        .join(', ');
 };
 
 export default {
@@ -48,7 +51,9 @@ export default {
         try {
             const info = await sock.groupGetInviteInfo(inviteCode);
             const participants = Array.isArray(info.participants) ? info.participants : [];
-            const admins = participants.filter((p) => p?.admin === 'admin' || p?.admin === 'superadmin');
+            const admins = participants.filter(
+                (p) => p?.admin === 'admin' || p?.admin === 'superadmin'
+            );
 
             const subject = info.subject || info.name || '-';
             const desc = info.desc || info.description || '-';
@@ -74,5 +79,5 @@ export default {
             await m.react('❌');
             await m.reply(`Gagal mengambil info grup: ${error.message}`);
         }
-    }
+    },
 };

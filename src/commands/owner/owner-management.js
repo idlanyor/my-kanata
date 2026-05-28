@@ -18,10 +18,15 @@ export default [
                 target = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
             }
 
-            if (!target) return m.reply('❌ Tag user, reply pesannya, atau masukkan nomornya untuk dijadikan owner.');
+            if (!target)
+                return m.reply(
+                    '❌ Tag user, reply pesannya, atau masukkan nomornya untuk dijadikan owner.'
+                );
 
             const normalizedTarget = jidNormalizedUser(target);
-            const botSettings = await Settings.findOne({ id: 'bot_settings' }) || await Settings.create({ id: 'bot_settings' });
+            const botSettings =
+                (await Settings.findOne({ id: 'bot_settings' })) ||
+                (await Settings.create({ id: 'bot_settings' }));
 
             if (botSettings.owners.includes(normalizedTarget)) {
                 return m.reply('❌ User tersebut sudah menjadi owner.');
@@ -31,8 +36,10 @@ export default [
             await botSettings.save();
             clearSettingsCache();
 
-            m.reply(`✅ Berhasil menambahkan @${normalizedTarget.split('@')[0]} sebagai owner.`, { mentions: [normalizedTarget] });
-        }
+            m.reply(`✅ Berhasil menambahkan @${normalizedTarget.split('@')[0]} sebagai owner.`, {
+                mentions: [normalizedTarget],
+            });
+        },
     },
     {
         name: 'delowner',
@@ -49,21 +56,28 @@ export default [
                 target = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
             }
 
-            if (!target) return m.reply('❌ Tag user, reply pesannya, atau masukkan nomornya untuk dihapus dari owner.');
+            if (!target)
+                return m.reply(
+                    '❌ Tag user, reply pesannya, atau masukkan nomornya untuk dihapus dari owner.'
+                );
 
             const normalizedTarget = jidNormalizedUser(target);
-            const botSettings = await Settings.findOne({ id: 'bot_settings' }) || await Settings.create({ id: 'bot_settings' });
+            const botSettings =
+                (await Settings.findOne({ id: 'bot_settings' })) ||
+                (await Settings.create({ id: 'bot_settings' }));
 
             if (!botSettings.owners.includes(normalizedTarget)) {
                 return m.reply('❌ User tersebut bukan owner.');
             }
 
-            botSettings.owners = botSettings.owners.filter(o => o !== normalizedTarget);
+            botSettings.owners = botSettings.owners.filter((o) => o !== normalizedTarget);
             await botSettings.save();
             clearSettingsCache();
 
-            m.reply(`✅ Berhasil menghapus @${normalizedTarget.split('@')[0]} dari daftar owner.`, { mentions: [normalizedTarget] });
-        }
+            m.reply(`✅ Berhasil menghapus @${normalizedTarget.split('@')[0]} dari daftar owner.`, {
+                mentions: [normalizedTarget],
+            });
+        },
     },
     {
         name: 'listowner',
@@ -72,13 +86,15 @@ export default [
         category: 'Owner',
         execute: async (sock, m, args, text) => {
             const { settings } = await import('../../config/settings.js');
-            const botSettings = await Settings.findOne({ id: 'bot_settings' }) || await Settings.create({ id: 'bot_settings' });
-            
+            const botSettings =
+                (await Settings.findOne({ id: 'bot_settings' })) ||
+                (await Settings.create({ id: 'bot_settings' }));
+
             const dbOwners = botSettings.owners || [];
-            
+
             let msg = `*── 「 OWNER LIST 」 ──*\n\n`;
             msg += `*Main Owner:* @${settings.ownerNumber.split('@')[0]}\n\n`;
-            
+
             if (dbOwners.length === 0) {
                 msg += `_Tidak ada owner tambahan di database._`;
             } else {
@@ -89,6 +105,6 @@ export default [
             }
 
             m.reply(msg, { mentions: dbOwners });
-        }
-    }
+        },
+    },
 ];

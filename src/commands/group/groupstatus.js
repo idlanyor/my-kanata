@@ -41,21 +41,31 @@ export default {
                 const audioVn = await toVN(buffer);
                 content = {
                     audio: audioVn,
-                    mimetype: "audio/ogg; codecs=opus",
-                    ptt: true
+                    mimetype: 'audio/ogg; codecs=opus',
+                    ptt: true,
                 };
             } else if (warna || textInput || text) {
                 const warnaStatusWA = new Map([
-                    ['biru', '#34B7F1'], ['hijau', '#25D366'], ['kuning', '#FFD700'],
-                    ['jingga', '#FF8C00'], ['merah', '#FF3B30'], ['ungu', '#9C27B0'],
-                    ['abu', '#9E9E9E'], ['hitam', '#000000'], ['putih', '#FFFFFF'], ['cyan', '#00BCD4']
+                    ['biru', '#34B7F1'],
+                    ['hijau', '#25D366'],
+                    ['kuning', '#FFD700'],
+                    ['jingga', '#FF8C00'],
+                    ['merah', '#FF3B30'],
+                    ['ungu', '#9C27B0'],
+                    ['abu', '#9E9E9E'],
+                    ['hitam', '#000000'],
+                    ['putih', '#FFFFFF'],
+                    ['cyan', '#00BCD4'],
                 ]);
 
                 let color = '#25D366';
                 if (warna) {
                     const textWarna = warna.toLowerCase().trim();
                     for (const [nama, kode] of warnaStatusWA.entries()) {
-                        if (textWarna.includes(nama)) { color = kode; break; }
+                        if (textWarna.includes(nama)) {
+                            color = kode;
+                            break;
+                        }
                     }
                 }
                 content = { text: cap || textInput || text, backgroundColor: color };
@@ -66,18 +76,17 @@ export default {
             await m.react('⏳');
 
             await sock.sendMessage(id, {
-                groupStatusMessage: content
+                groupStatusMessage: content,
             });
-            
+
             await m.reply('✅ Dah UpStatus Nya Tengok Di Grup');
             await m.react('✅');
-
         } catch (err) {
             console.error('GroupStatus Error:', err);
             await m.react('❌');
             await m.reply(`❌ Gagal: ${err.message}`);
         }
-    }
+    },
 };
 
 /**
@@ -96,10 +105,19 @@ async function toVN(inputBuffer) {
             .audioBitrate('48k')
             .audioChannels(1)
             .audioFrequency(48000)
-            .outputOptions(['-map_metadata', '-1', '-application', 'voip', '-compression_level', '10', '-page_duration', '20000'])
+            .outputOptions([
+                '-map_metadata',
+                '-1',
+                '-application',
+                'voip',
+                '-compression_level',
+                '10',
+                '-page_duration',
+                '20000',
+            ])
             .on('error', reject)
             .on('end', () => resolve(Buffer.concat(chunks)))
             .pipe(outStream, { end: true });
-        outStream.on('data', c => chunks.push(c));
+        outStream.on('data', (c) => chunks.push(c));
     });
 }

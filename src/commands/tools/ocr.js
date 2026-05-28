@@ -1,15 +1,11 @@
-import {
-  GoogleGenAI,
-  createUserContent,
-  createPartFromUri,
-} from "@google/genai";
+import { GoogleGenAI, createUserContent, createPartFromUri } from '@google/genai';
 import { downloadContentFromMessage } from 'baileys';
 import { settings } from '../../config/settings.js';
 import fs from 'fs';
-import { makeResultPath } from '../../lib/resultPath.js';
+import { makeResultPath } from '../../utils/resultPath.js';
 
 const ai = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY
+    apiKey: process.env.GEMINI_API_KEY,
 });
 
 const getRandom = (ext) => {
@@ -29,7 +25,9 @@ export default {
         const isImage = /image/.test(mime) || /imageMessage/.test(mtype);
 
         if (!isImage) {
-            return m.reply(`Please reply to an image or send an image with caption ${settings.prefix}read to extract text.`);
+            return m.reply(
+                `Please reply to an image or send an image with caption ${settings.prefix}read to extract text.`
+            );
         }
 
         await m.react('⏳');
@@ -41,7 +39,7 @@ export default {
             for await (const chunk of stream) {
                 buffer = Buffer.concat([buffer, chunk]);
             }
-            
+
             const ext = '.jpg';
             tempPath = makeResultPath(getRandom(ext));
             fs.writeFileSync(tempPath, buffer);
@@ -52,17 +50,17 @@ export default {
             });
 
             const response = await ai.models.generateContent({
-                model: "gemini-2.5-flash",
-                systemInstruction: "Kamu adalah asisten khusus OCR. Tugasmu HANYA menyalin semua teks yang terlihat di dalam gambar secara akurat. Jangan memberikan komentar, penjelasan, atau tambahan kata-kata lain. Jika tidak ada teks, katakan 'Tidak ada teks terdeteksi'.",
+                model: 'gemini-2.5-flash',
+                systemInstruction:
+                    "Kamu adalah asisten khusus OCR. Tugasmu HANYA menyalin semua teks yang terlihat di dalam gambar secara akurat. Jangan memberikan komentar, penjelasan, atau tambahan kata-kata lain. Jika tidak ada teks, katakan 'Tidak ada teks terdeteksi'.",
                 contents: createUserContent([
                     createPartFromUri(myfile.uri, myfile.mimeType),
-                    "Ekstrak semua teks dari gambar ini."
+                    'Ekstrak semua teks dari gambar ini.',
                 ]),
             });
 
             await m.reply(response.text.trim());
             await m.react('✅');
-
         } catch (error) {
             console.error('OCR Error:', error);
             await m.react('❌');
@@ -72,5 +70,5 @@ export default {
                 fs.unlinkSync(tempPath);
             }
         }
-    }
+    },
 };

@@ -15,7 +15,8 @@ export default {
         if (!voucher) return m.reply('Voucher code is invalid.');
 
         if (voucher.quota <= 0) return m.reply('This voucher has reached its usage limit.');
-        if (voucher.usedBy.includes(m.sender)) return m.reply('You have already claimed this voucher.');
+        if (voucher.usedBy.includes(m.sender))
+            return m.reply('You have already claimed this voucher.');
 
         try {
             // Update User Balance
@@ -38,21 +39,22 @@ export default {
                 amount: voucher.value,
                 category: 'Voucher',
                 source: 'general',
-                description: `Claimed voucher: ${code}`
+                description: `Claimed voucher: ${code}`,
             });
 
-            await m.reply(`*VOUCHER CLAIMED*
+            await m.reply(
+                `*VOUCHER CLAIMED*
 
 ` +
-                `Berhasil mengklaim voucher: ${code}
+                    `Berhasil mengklaim voucher: ${code}
 ` +
-                `Saldo ditambahkan: + Rp ${voucher.value.toLocaleString()}
+                    `Saldo ditambahkan: + Rp ${voucher.value.toLocaleString()}
 ` +
-                `Saldo Anda sekarang: Rp ${user.balance.toLocaleString()}`);
-
+                    `Saldo Anda sekarang: Rp ${user.balance.toLocaleString()}`
+            );
         } catch (error) {
             console.error(error);
             await m.reply('Gagal mengklaim voucher. Silakan hubungi admin.');
         }
-    }
+    },
 };

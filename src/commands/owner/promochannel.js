@@ -1,3 +1,4 @@
+import logger from '../../utils/logger.js';
 export default {
     name: 'promochannel',
     aliases: ['pc', 'promosi'],
@@ -17,14 +18,14 @@ export default {
                 newsletterForward: {
                     jid: newsJid,
                     name: newsName,
-                    serverId: 100 // ID pesan palsu
-                }
+                    serverId: 100, // ID pesan palsu
+                },
             });
-            
-            console.log(`[DEBUG] Promo Channel sent to ${m.chat}`);
+
+            logger.info(`[DEBUG] Promo Channel sent to ${m.chat}`);
         } catch (err) {
-            console.error(err);
+            logger.error(err);
             m.reply('Gagal mengirim promo saluran.');
         }
-    }
+    },
 };

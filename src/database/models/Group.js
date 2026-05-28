@@ -4,92 +4,92 @@ const groupSchema = new mongoose.Schema({
     jid: {
         type: String,
         required: true,
-        unique: true
+        unique: true,
     },
     name: {
         type: String,
-        default: ''
+        default: '',
     },
     announce: {
         type: Boolean,
-        default: false
+        default: false,
     },
     restrict: {
         type: Boolean,
-        default: false
+        default: false,
     },
     antilink: {
         type: Boolean,
-        default: false
+        default: false,
     },
     antitoxic: {
         type: Boolean,
-        default: false
+        default: false,
     },
     welcome: {
         type: Boolean,
-        default: false
+        default: false,
     },
     left: {
         type: Boolean,
-        default: false
+        default: false,
     },
     nsfw: {
         type: Boolean,
-        default: false
+        default: false,
     },
     mute: {
         type: Boolean,
-        default: false
+        default: false,
     },
     prayerReminder: {
         type: Boolean,
-        default: false
+        default: false,
     },
     cityId: {
         type: String,
-        default: '1420' // Default Purbalingga
+        default: '1420', // Default Purbalingga
     },
     cityName: {
         type: String,
-        default: 'KAB. PURBALINGGA'
+        default: 'KAB. PURBALINGGA',
     },
     welcomeMsg: {
         type: String,
-        default: 'Selamat datang @user di grup @group!'
+        default: 'Selamat datang @user di grup @group!',
     },
     leaveMsg: {
         type: String,
-        default: 'Selamat tinggal @user, semoga tenang di sana!'
+        default: 'Selamat tinggal @user, semoga tenang di sana!',
     },
     autoOpen: {
         type: Boolean,
-        default: false
+        default: false,
     },
     autoClose: {
         type: Boolean,
-        default: false
+        default: false,
     },
     autoOpenTime: {
         type: String,
-        default: '05:00'
+        default: '05:00',
     },
     autoCloseTime: {
         type: String,
-        default: '22:00'
+        default: '22:00',
     },
     lastAutoOpenAt: {
         type: String,
-        default: ''
+        default: '',
     },
     lastAutoCloseAt: {
         type: String,
-        default: ''
+        default: '',
     },
     createdAt: {
         type: Date,
-        default: Date.now
-    }
+        default: Date.now,
+    },
 });
 
 const Group = mongoose.model('Group', groupSchema);

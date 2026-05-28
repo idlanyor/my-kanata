@@ -2,7 +2,7 @@ import { glob } from 'glob';
 import path from 'path';
 import { pathToFileURL } from 'url';
 import chokidar from 'chokidar';
-import logger from './logger.js';
+import logger from '../utils/logger.js';
 
 const commands = new Map();
 const buttonHandlers = new Map();
@@ -19,7 +19,10 @@ export const loadCommands = async () => {
     for (const file of files) {
         await importCommand(file);
     }
-    console.log(`\x1b[32m%s\x1b[0m`, `✅ Loaded ${commands.size} total commands/aliases and ${buttonHandlers.size} button handlers`);
+    logger.info(
+        `\x1b[32m%s\x1b[0m`,
+        `✅ Loaded ${commands.size} total commands/aliases and ${buttonHandlers.size} button handlers`
+    );
 
     // 2. Setup Watcher for Hot-Reload
     const watcher = chokidar.watch(commandsDir, {
@@ -28,7 +31,7 @@ export const loadCommands = async () => {
         ignoreInitial: true,
         usePolling: true,
         interval: 100,
-        binaryInterval: 300
+        binaryInterval: 300,
     });
 
     watcher
@@ -40,7 +43,7 @@ export const loadCommands = async () => {
             unloadCommand(filePath);
             logger.info(`🗑️ Plugin Deleted: ${fileName}`);
         })
-        .on('error', error => logger.error(`Watcher error: ${error}`));
+        .on('error', (error) => logger.error(`Watcher error: ${error}`));
 };
 
 /**
@@ -59,19 +62,25 @@ const importCommand = async (filePath) => {
 
         const relativePath = path.relative(commandsDir, filePath);
         const category = path.dirname(relativePath);
-        const categoryName = category === '.' ? 'General' : category.split(path.sep).map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
+        const categoryName =
+            category === '.'
+                ? 'General'
+                : category
+                      .split(path.sep)
+                      .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+                      .join(' ');
 
         const register = (cmd) => {
             if (cmd && cmd.name && typeof cmd.execute === 'function') {
                 cmd.category = cmd.category || categoryName;
                 cmd._filePath = filePath;
-                
+
                 // Set main name
                 commands.set(cmd.name.toLowerCase(), cmd);
-                
+
                 // Set aliases
                 if (Array.isArray(cmd.aliases)) {
-                    cmd.aliases.forEach(alias => {
+                    cmd.aliases.forEach((alias) => {
                         if (alias) commands.set(alias.toLowerCase(), cmd);
                     });
                 }
@@ -101,13 +110,13 @@ const importCommand = async (filePath) => {
 
 const reloadCommand = async (filePath) => {
     if (!filePath.endsWith('.js')) return;
-    
+
     // Tiny delay to ensure OS file write is complete
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise((resolve) => setTimeout(resolve, 300));
 
     const success = await importCommand(filePath);
     if (success) {
-        console.log(`\x1b[36m%s\x1b[0m`, `✨ Plugin Reloaded: ${path.basename(filePath)}`);
+        logger.info(`\x1b[36m%s\x1b[0m`, `✨ Plugin Reloaded: ${path.basename(filePath)}`);
     }
 };
 

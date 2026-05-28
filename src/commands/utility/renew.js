@@ -10,7 +10,8 @@ const __dirname = path.dirname(__filename);
 export default {
     name: 'renew',
     aliases: ['perpanjang', 'extend', 'tagih'],
-    description: 'Send Renewal Invoice (No Credentials). Usage: .renew <product/IP> | <price> | <customer> | <next_due_date>',
+    description:
+        'Send Renewal Invoice (No Credentials). Usage: .renew <product/IP> | <price> | <customer> | <next_due_date>',
     category: 'Utility',
     execute: async (sock, m, args, text) => {
         if (!text) {
@@ -18,18 +19,18 @@ export default {
                 `*RENEWAL INVOICE SYSTEM*
 
 ` +
-                `Format:
+                    `Format:
 ${settings.prefix}renew Product/IP | Price | Customer Name | Next Due Date
 
 ` +
-                `Example:
+                    `Example:
 ${settings.prefix}renew VPS 158.69.207.97 | 100000 | Roy | 12 March 2026`
             );
         }
 
-        const parts = text.split('|').map(p => p.trim());
+        const parts = text.split('|').map((p) => p.trim());
         const [product, priceStr, customer, nextDueDate] = parts;
-        
+
         const price = parseInt(priceStr?.replace(/[^0-9]/g, '')) || 0;
 
         if (!product || isNaN(price)) {
@@ -39,7 +40,7 @@ ${settings.prefix}renew VPS 158.69.207.97 | 100000 | Roy | 12 March 2026`
         const invoiceNumber = `INV-REN-${Math.floor(Math.random() * 90000) + 10000}`;
 
         // Read logo
-        let logoBase64 = "";
+        let logoBase64 = '';
         try {
             const logoPath = path.join(__dirname, '../../assets/antidonasi.png');
             if (fs.existsSync(logoPath)) {
@@ -50,7 +51,8 @@ ${settings.prefix}renew VPS 158.69.207.97 | 100000 | Roy | 12 March 2026`
             console.error('Logo read error:', e);
         }
 
-        const notes = `RENEWAL INFORMATION
+        const notes =
+            `RENEWAL INFORMATION
 ` +
             `------------------------------------------------
 ` +
@@ -68,46 +70,53 @@ ${settings.prefix}renew VPS 158.69.207.97 | 100000 | Roy | 12 March 2026`
             `Confirmation: ${settings.ownerNumber.split('@')[0]}`;
 
         const invoiceData = {
-            from: settings.ownerName || "Kanata Store",
-            to: customer || "Valued Customer",
+            from: settings.ownerName || 'Kanata Store',
+            to: customer || 'Valued Customer',
             logo: logoBase64,
             number: invoiceNumber,
-            date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
-            currency: "IDR",
+            date: new Date().toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric',
+            }),
+            currency: 'IDR',
             items: [
                 {
                     name: `Renewal: ${product}`,
                     quantity: 1,
                     unit_cost: price,
-                    description: `Extension until ${nextDueDate}`
-                }
+                    description: `Extension until ${nextDueDate}`,
+                },
             ],
             notes: notes,
             fields: {
-                tax: "%",
+                tax: '%',
                 discounts: false,
-                shipping: false
+                shipping: false,
             },
         };
 
         try {
             await m.react('⏳');
-            
+
             const apiKey = process.env.INVOICE_API_KEY;
             const pdfBuffer = await generateInvoice(invoiceData, apiKey);
-            
-            await sock.sendMessage(m.chat, { 
-                document: pdfBuffer, 
-                mimetype: 'application/pdf', 
-                fileName: `${invoiceNumber}.pdf`,
-                caption: `Billing for ${product} is ready.`
-            }, { quoted: m });
+
+            await sock.sendMessage(
+                m.chat,
+                {
+                    document: pdfBuffer,
+                    mimetype: 'application/pdf',
+                    fileName: `${invoiceNumber}.pdf`,
+                    caption: `Billing for ${product} is ready.`,
+                },
+                { quoted: m }
+            );
             await m.react('✅');
-            
         } catch (error) {
             console.error('Renew Error:', error);
             await m.react('❌');
             await m.reply(`Failed to create invoice: ${error.message}`);
         }
-    }
+    },
 };

@@ -3,7 +3,7 @@ import boxen from 'boxen';
 import moment from 'moment';
 import gradient from 'gradient-string';
 import CFonts from 'cfonts';
-import { botSocket } from './socket.js';
+import { botSocket } from '../lib/socket.js';
 
 const colors = {
     info: chalk.cyanBright,
@@ -29,7 +29,7 @@ const pill = (text, color = colors.context) => color(` ${text} `);
 
 const banner = () => {
     console.clear();
-    
+
     // Create Big Text Banner
     CFonts.say('KANATA|BOT', {
         font: 'block',
@@ -49,18 +49,20 @@ const banner = () => {
         `${chalk.white('Created by')} ${gradient.retro('Roy')}`,
         `${chalk.white('Version   ')} ${chalk.cyan('1.0.0')}`,
         `${chalk.white('Status    ')} ${chalk.greenBright('Online')}`,
-        `${chalk.white('Time      ')} ${chalk.gray(moment().format('DD/MM/YYYY HH:mm:ss'))}`
+        `${chalk.white('Time      ')} ${chalk.gray(moment().format('DD/MM/YYYY HH:mm:ss'))}`,
     ].join('\n');
 
-    console.log(boxen(info, {
-        padding: 1,
-        margin: { top: 0, bottom: 1, left: 0, right: 0 },
-        borderStyle: 'round',
-        borderColor: 'cyan',
-        float: 'center',
-        title: chalk.bold.white(' [ System Info ] '),
-        titleAlignment: 'center'
-    }));
+    console.log(
+        boxen(info, {
+            padding: 1,
+            margin: { top: 0, bottom: 1, left: 0, right: 0 },
+            borderStyle: 'round',
+            borderColor: 'cyan',
+            float: 'center',
+            title: chalk.bold.white(' [ System Info ] '),
+            titleAlignment: 'center',
+        })
+    );
 };
 
 const isPlainObject = (value) => Object.prototype.toString.call(value) === '[object Object]';
@@ -97,10 +99,11 @@ const stringifyValue = (value) => {
 const formatErrorDetails = (error) => {
     if (!(error instanceof Error)) return null;
 
-    const stack = error.stack
-        ?.split('\n')
-        .map(line => line.trim())
-        .filter(Boolean) || [];
+    const stack =
+        error.stack
+            ?.split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean) || [];
 
     const [headline, ...frames] = stack;
     return {
@@ -157,11 +160,16 @@ const log = (type, primary, secondary = '') => {
     const prefix = meta.color(meta.label.padEnd(5));
     const { context, message, details } = normalizeLogArgs(primary, secondary);
     const ctx = context
-        ? (type === 'error' ? colors.errorContext(` ${context} `) : colors.context(` ${context} `))
+        ? type === 'error'
+            ? colors.errorContext(` ${context} `)
+            : colors.context(` ${context} `)
         : '';
     const output = truncate(type === 'success' ? gradient.summer(message) : message);
 
-    botSocket.emitLog(`${context ? `[${context}] ` : ''}${truncate(stringifyValue(primary), 500)}`, type);
+    botSocket.emitLog(
+        `${context ? `[${context}] ` : ''}${truncate(stringifyValue(primary), 500)}`,
+        type
+    );
     printBlock(time, prefix, ctx, output, details, type);
 };
 
@@ -173,18 +181,22 @@ const chat = ({ chatType = 'CHAT', chatName = '', sender = '', body = '' }) => {
     const senderText = sender ? chalk.bold(truncate(sender, 20)) : 'Unknown';
     const bodyText = chalk.white(truncate(body || '<non-text>', 120));
 
-    botSocket.emitLog(`[${chatType}] ${chatName ? `${chatName} | ` : ''}${sender}: ${body}`, 'info');
+    botSocket.emitLog(
+        `[${chatType}] ${chatName ? `${chatName} | ` : ''}${sender}: ${body}`,
+        'info'
+    );
     printLine([time, prefix, typePill, room, colors.dim(senderText), colors.dim('→'), bodyText]);
 };
 
 const command = ({ phase = 'RUN', name = '', sender = '', chat = '', extra = '' }) => {
     const time = colors.time(`[${moment().format('HH:mm:ss')}]`);
     const prefix = colors.debug('CMD  ');
-    const phaseColor = phase === 'DONE'
-        ? chalk.black.bgGreenBright
-        : phase === 'FAIL'
-            ? chalk.black.bgRedBright
-            : chalk.black.bgYellowBright;
+    const phaseColor =
+        phase === 'DONE'
+            ? chalk.black.bgGreenBright
+            : phase === 'FAIL'
+              ? chalk.black.bgRedBright
+              : chalk.black.bgYellowBright;
     const phasePill = pill(phase, phaseColor);
     const namePill = pill(name || 'unknown', chalk.black.bgMagentaBright);
     const senderText = sender ? colors.dim(truncate(sender, 24)) : '';
@@ -199,11 +211,12 @@ const event = ({ scope = 'SYSTEM', action = '', details = '', level = 'info' }) 
     const time = colors.time(`[${moment().format('HH:mm:ss')}]`);
     const meta = levelMeta[level] || levelMeta.info;
     const prefix = meta.color(meta.label.padEnd(5));
-    const scopeColor = level === 'error'
-        ? colors.errorContext
-        : level === 'warn'
-            ? chalk.black.bgYellowBright
-            : chalk.black.bgBlueBright;
+    const scopeColor =
+        level === 'error'
+            ? colors.errorContext
+            : level === 'warn'
+              ? chalk.black.bgYellowBright
+              : chalk.black.bgBlueBright;
     const scopePill = pill(scope, scopeColor);
     const actionText = truncate(action, 80);
     const detailText = details ? colors.dim(truncate(details, 100)) : '';
@@ -221,7 +234,7 @@ const logger = {
     chat,
     command,
     event,
-    banner
+    banner,
 };
 
 export default logger;

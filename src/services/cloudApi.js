@@ -8,11 +8,11 @@ const getClient = () => {
     return axios.create({
         baseURL: `${CLOUD_URL}/api`,
         headers: {
-            'Authorization': `Bearer ${CLOUD_TOKEN}`,
-            'Content-Type': 'application/json'
+            Authorization: `Bearer ${CLOUD_TOKEN}`,
+            'Content-Type': 'application/json',
         },
         httpsAgent: new https.Agent({ rejectUnauthorized: false }),
-        timeout: 10000
+        timeout: 10000,
     });
 };
 
@@ -104,26 +104,24 @@ export const getUserLXCs = async (userEmail, isAdmin = false) => {
     try {
         const nodes = await getCloudNodes();
         let allLXCs = [];
-        
+
         for (const node of nodes) {
             const lxcs = await getCloudLXCs(node.node);
-            allLXCs.push(...lxcs.map(l => ({ ...l, node: node.node })));
+            allLXCs.push(...lxcs.map((l) => ({ ...l, node: node.node })));
         }
 
         if (isAdmin && !userEmail) return allLXCs;
 
         // Find Cloud User ID
         const users = await getCloudUsers();
-        const cloudUser = users.find(u => u.email === userEmail);
+        const cloudUser = users.find((u) => u.email === userEmail);
         if (!cloudUser) return [];
 
         // Find VMIDs from subscriptions
         const subs = await getCloudSubscriptions();
-        const userVmids = subs
-            .filter(s => s.ownerId === cloudUser.id)
-            .map(s => s.vmid);
+        const userVmids = subs.filter((s) => s.ownerId === cloudUser.id).map((s) => s.vmid);
 
-        return allLXCs.filter(l => userVmids.includes(l.vmid.toString()));
+        return allLXCs.filter((l) => userVmids.includes(l.vmid.toString()));
     } catch (error) {
         console.error('getUserLXCs Error:', error.message);
         throw error;

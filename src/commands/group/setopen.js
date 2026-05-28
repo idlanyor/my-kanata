@@ -17,12 +17,14 @@ export default {
     category: 'Group',
     execute: async (sock, m, args) => {
         if (!m.isGroup) return m.reply('Perintah ini hanya untuk grup.');
-        if (!(await isGroupAdmin(sock, m))) return m.reply('Hanya admin grup yang bisa pakai command ini.');
+        if (!(await isGroupAdmin(sock, m)))
+            return m.reply('Hanya admin grup yang bisa pakai command ini.');
 
         const input = (args[0] || '').toLowerCase();
         if (!input) return m.reply('Format: .setopen <HH:mm|on|off>');
 
-        const group = await Group.findOne({ jid: m.chat }) || await Group.create({ jid: m.chat });
+        const group =
+            (await Group.findOne({ jid: m.chat })) || (await Group.create({ jid: m.chat }));
 
         if (input === 'on' || input === 'off') {
             group.autoOpen = input === 'on';
@@ -38,5 +40,5 @@ export default {
         await group.save();
         clearSettingsCache();
         return m.reply(`✅ Waktu auto open diset ke ${input} WIB dan fitur diaktifkan.`);
-    }
+    },
 };

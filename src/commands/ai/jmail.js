@@ -19,34 +19,33 @@ export default {
                 onChunk: async (fullText) => {
                     currentText = fullText;
                     const now = Date.now();
-                    
+
                     // Throttle updates to avoid being banned for spamming edits (every 1.5 seconds)
                     if (now - lastUpdate > 1500 && currentText.trim().length > 0) {
                         try {
-                            await sock.sendMessage(m.chat, { 
-                                text: currentText + ' ▒', 
-                                edit: key 
+                            await sock.sendMessage(m.chat, {
+                                text: currentText + ' ▒',
+                                edit: key,
                             });
                             lastUpdate = now;
                         } catch (e) {
                             // Silently fail for transient edit errors (common in Baileys during rapid updates)
                         }
                     }
-                }
+                },
             });
 
             // Final update with clean text
-            await sock.sendMessage(m.chat, { 
-                text: response, 
-                edit: key 
+            await sock.sendMessage(m.chat, {
+                text: response,
+                edit: key,
             });
-
         } catch (error) {
             console.error('Jmail Error:', error);
-            await sock.sendMessage(m.chat, { 
-                text: `Error: ${error.message}`, 
-                edit: key 
+            await sock.sendMessage(m.chat, {
+                text: `Error: ${error.message}`,
+                edit: key,
             });
         }
-    }
+    },
 };

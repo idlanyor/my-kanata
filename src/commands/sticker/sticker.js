@@ -15,7 +15,9 @@ export default {
 
             if (text && /^https?:\/\//i.test(text.trim())) {
                 const originalUrl = text.trim();
-                const isTwitterUrl = /https?:\/\/(?:www\.)?(?:twitter\.com|x\.com)\//i.test(originalUrl);
+                const isTwitterUrl = /https?:\/\/(?:www\.)?(?:twitter\.com|x\.com)\//i.test(
+                    originalUrl
+                );
                 let mediaUrl = originalUrl;
                 let forceAnimatedFromSource = false;
 
@@ -31,7 +33,7 @@ export default {
 
                 const response = await axios.get(mediaUrl, {
                     responseType: 'arraybuffer',
-                    timeout: 30000
+                    timeout: 30000,
                 });
                 const contentType = (response.headers['content-type'] || '').toLowerCase();
                 const urlLower = mediaUrl.toLowerCase();
@@ -46,7 +48,8 @@ export default {
                     return m.reply('URL harus mengarah ke media gambar/video/gif yang valid.');
                 }
 
-                isAnimatedSource = forceAnimatedFromSource || isVideoUrl || isGifUrl || isAnimatedUrlByExt;
+                isAnimatedSource =
+                    forceAnimatedFromSource || isVideoUrl || isGifUrl || isAnimatedUrlByExt;
                 buffer = Buffer.from(response.data);
             } else {
                 const target = m.quoted || m;
@@ -54,8 +57,10 @@ export default {
                 const fileName = (target?.msg?.fileName || '').toLowerCase();
                 const isGifDocument = target.isDocument && /image\/gif/i.test(mime);
                 const isVideoDocument = target.isDocument && /video\//i.test(mime);
-                const isAnimatedDocumentByExt = target.isDocument && /\.(gif|mp4|webm|mkv|mov)$/.test(fileName);
-                isAnimatedSource = target.isVideo || isGifDocument || isVideoDocument || isAnimatedDocumentByExt;
+                const isAnimatedDocumentByExt =
+                    target.isDocument && /\.(gif|mp4|webm|mkv|mov)$/.test(fileName);
+                isAnimatedSource =
+                    target.isVideo || isGifDocument || isVideoDocument || isAnimatedDocumentByExt;
 
                 if (!target.isImage && !isAnimatedSource) {
                     await m.react('❌');
@@ -66,7 +71,9 @@ export default {
                     const duration = Number(target.seconds || target?.msg?.seconds || 0);
                     if (duration > 10) {
                         await m.react('❌');
-                        return m.reply(`Durasi video terlalu panjang (${duration}s). Maksimal 10 detik.`);
+                        return m.reply(
+                            `Durasi video terlalu panjang (${duration}s). Maksimal 10 detik.`
+                        );
                     }
                 }
 
@@ -80,7 +87,7 @@ export default {
                 categories: ['', ''],
                 id: m.id,
                 quality: 50,
-                animated: isAnimatedSource
+                animated: isAnimatedSource,
             });
 
             const stickerBuffer = await sticker.toBuffer();
@@ -91,5 +98,5 @@ export default {
             await m.react('❌');
             await m.reply('Gagal membuat sticker dari media tersebut.');
         }
-    }
+    },
 };

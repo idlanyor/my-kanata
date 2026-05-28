@@ -10,7 +10,8 @@ const __dirname = path.dirname(__filename);
 export default {
     name: 'deliver',
     aliases: ['kirimvps', 'sendvps', 'orderdone'],
-    description: 'Send VPS details via PDF (No Emojis). Usage: .deliver <product> | <price> | <ip> | <user> | <pass> | <region> | <due_date>',
+    description:
+        'Send VPS details via PDF (No Emojis). Usage: .deliver <product> | <price> | <ip> | <user> | <pass> | <region> | <due_date>',
     category: 'Utility',
     execute: async (sock, m, args, text) => {
         if (!text) {
@@ -18,18 +19,18 @@ export default {
                 `*VPS DELIVERY SYSTEM*
 
 ` +
-                `Format:
+                    `Format:
 ${settings.prefix}deliver Product Name | Price | IP Address | Username | Password | Region | Next Due Date
 
 ` +
-                `Example:
+                    `Example:
 ${settings.prefix}deliver VPS Debian 13 KVM | 100000 | 158.69.207.97 | root | mypassword123 | USA - North Canada | 12 Feb 2026`
             );
         }
 
-        const parts = text.split('|').map(p => p.trim());
+        const parts = text.split('|').map((p) => p.trim());
         const [product, priceStr, ip, user, pass, region, dueDate] = parts;
-        
+
         const price = parseInt(priceStr?.replace(/[^0-9]/g, '')) || 0;
 
         if (!product || !ip || !pass) {
@@ -39,7 +40,7 @@ ${settings.prefix}deliver VPS Debian 13 KVM | 100000 | 158.69.207.97 | root | my
         const orderId = `ORD-${Math.random().toString(36).substring(2, 11).toUpperCase()}`;
 
         // Read logo
-        let logoBase64 = "";
+        let logoBase64 = '';
         try {
             const logoPath = path.join(__dirname, '../../assets/antidonasi.png');
             if (fs.existsSync(logoPath)) {
@@ -50,7 +51,8 @@ ${settings.prefix}deliver VPS Debian 13 KVM | 100000 | 158.69.207.97 | root | my
             console.error('Logo read error:', e);
         }
 
-        const notes = `DETAIL AKSES VPS
+        const notes =
+            `DETAIL AKSES VPS
 ` +
             `------------------------------------------------
 ` +
@@ -77,46 +79,53 @@ ${settings.prefix}deliver VPS Debian 13 KVM | 100000 | 158.69.207.97 | root | my
             `Butuh bantuan? Hubungi: ${settings.ownerNumber.split('@')[0]}`;
 
         const invoiceData = {
-            from: settings.ownerName || "Kanata Store",
-            to: "Customer",
+            from: settings.ownerName || 'Kanata Store',
+            to: 'Customer',
             logo: logoBase64,
             number: orderId,
-            date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
-            currency: "IDR",
+            date: new Date().toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric',
+            }),
+            currency: 'IDR',
             items: [
                 {
                     name: `${product} (${region || 'Global'})`,
                     quantity: 1,
                     unit_cost: price,
-                    description: `IP: ${ip}`
-                }
+                    description: `IP: ${ip}`,
+                },
             ],
             notes: notes,
             fields: {
-                tax: "%",
+                tax: '%',
                 discounts: false,
-                shipping: false
+                shipping: false,
             },
         };
 
         try {
             await m.react('⏳');
-            
+
             const apiKey = process.env.INVOICE_API_KEY;
             const pdfBuffer = await generateInvoice(invoiceData, apiKey);
-            
-            await sock.sendMessage(m.chat, { 
-                document: pdfBuffer, 
-                mimetype: 'application/pdf', 
-                fileName: `${orderId}.pdf`,
-                caption: `Order completed. Check the attached document for access details.`
-            }, { quoted: m });
+
+            await sock.sendMessage(
+                m.chat,
+                {
+                    document: pdfBuffer,
+                    mimetype: 'application/pdf',
+                    fileName: `${orderId}.pdf`,
+                    caption: `Order completed. Check the attached document for access details.`,
+                },
+                { quoted: m }
+            );
             await m.react('✅');
-            
         } catch (error) {
             console.error('Delivery Error:', error);
             await m.react('❌');
             await m.reply(`Failed to create document: ${error.message}`);
         }
-    }
+    },
 };

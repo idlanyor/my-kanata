@@ -1,17 +1,73 @@
 import User from '../../database/models/User.js';
 import Transaction from '../../database/models/Transaction.js';
 import Server from '../../database/models/Server.js';
-import { createPteroServer } from '../../lib/pterodactyl.js';
+import { createPteroServer } from '../../services/pterodactyl.js';
 import { settings } from '../../config/settings.js';
 
 const plans = [
-    { id: 1, name: '100%', ram: 3072, disk: 3072, cpu: 100, price: 15000, desc: '3 GB RAM · 3 GB Storage' },
-    { id: 2, name: '200%', ram: 5120, disk: 5120, cpu: 200, price: 20000, desc: '5 GB RAM · 5 GB Storage' },
-    { id: 3, name: '300%', ram: 7168, disk: 7168, cpu: 300, price: 25000, desc: '7 GB RAM · 7 GB Storage' },
-    { id: 4, name: '400%', ram: 9216, disk: 10240, cpu: 400, price: 30000, desc: '9 GB RAM · 10 GB Storage' },
-    { id: 5, name: '500%', ram: 12288, disk: 12288, cpu: 500, price: 35000, desc: '12 GB RAM · 12 GB Storage' },
-    { id: 6, name: '600%', ram: 15360, disk: 20480, cpu: 600, price: 40000, desc: '15 GB RAM · 20 GB Storage' },
-    { id: 7, name: '700%', ram: 20480, disk: 25600, cpu: 700, price: 50000, desc: '20 GB RAM · 25 GB Storage' },
+    {
+        id: 1,
+        name: '100%',
+        ram: 3072,
+        disk: 3072,
+        cpu: 100,
+        price: 15000,
+        desc: '3 GB RAM · 3 GB Storage',
+    },
+    {
+        id: 2,
+        name: '200%',
+        ram: 5120,
+        disk: 5120,
+        cpu: 200,
+        price: 20000,
+        desc: '5 GB RAM · 5 GB Storage',
+    },
+    {
+        id: 3,
+        name: '300%',
+        ram: 7168,
+        disk: 7168,
+        cpu: 300,
+        price: 25000,
+        desc: '7 GB RAM · 7 GB Storage',
+    },
+    {
+        id: 4,
+        name: '400%',
+        ram: 9216,
+        disk: 10240,
+        cpu: 400,
+        price: 30000,
+        desc: '9 GB RAM · 10 GB Storage',
+    },
+    {
+        id: 5,
+        name: '500%',
+        ram: 12288,
+        disk: 12288,
+        cpu: 500,
+        price: 35000,
+        desc: '12 GB RAM · 12 GB Storage',
+    },
+    {
+        id: 6,
+        name: '600%',
+        ram: 15360,
+        disk: 20480,
+        cpu: 600,
+        price: 40000,
+        desc: '15 GB RAM · 20 GB Storage',
+    },
+    {
+        id: 7,
+        name: '700%',
+        ram: 20480,
+        disk: 25600,
+        cpu: 700,
+        price: 50000,
+        desc: '20 GB RAM · 25 GB Storage',
+    },
 ];
 
 export default {
@@ -33,9 +89,11 @@ export default {
         }
 
         if (planId) {
-            const plan = plans.find(p => p.id === planId);
+            const plan = plans.find((p) => p.id === planId);
             if (!plan) {
-                return m.reply(`Invalid Plan ID. Use ${settings.prefix}store to see available plans.`);
+                return m.reply(
+                    `Invalid Plan ID. Use ${settings.prefix}store to see available plans.`
+                );
             }
 
             // Get user from DB
@@ -45,7 +103,9 @@ export default {
             }
 
             if (user.balance < plan.price) {
-                return m.reply(`Insufficient balance.\nYour Balance: Rp ${user.balance.toLocaleString()}\nPrice: Rp ${plan.price.toLocaleString()}\n\nPlease contact owner to topup.`);
+                return m.reply(
+                    `Insufficient balance.\nYour Balance: Rp ${user.balance.toLocaleString()}\nPrice: Rp ${plan.price.toLocaleString()}\n\nPlease contact owner to topup.`
+                );
             }
 
             await m.react('⏳');
@@ -64,7 +124,7 @@ export default {
                     identifier: server.identifier,
                     planName: plan.name,
                     price: plan.price,
-                    expiredAt: expiredDate
+                    expiredAt: expiredDate,
                 });
 
                 // 3. Deduct Balance
@@ -79,10 +139,11 @@ export default {
                     amount: plan.price,
                     category: 'Store',
                     source: 'store',
-                    description: `Purchased Ptero VPS Plan ${plan.name} (ID: ${server.id})`
+                    description: `Purchased Ptero VPS Plan ${plan.name} (ID: ${server.id})`,
                 });
 
-                const successMsg = `Success Purchased VPS!\n\n` +
+                const successMsg =
+                    `Success Purchased VPS!\n\n` +
                     `Plan: ${plan.name}\n` +
                     `Price: Rp ${plan.price.toLocaleString()}\n` +
                     `Remaining Balance: Rp ${user.balance.toLocaleString()}\n\n` +
@@ -94,7 +155,6 @@ export default {
 
                 await m.reply(successMsg);
                 await m.react('✅');
-
             } catch (error) {
                 console.error(error);
                 await m.react('❌');
@@ -105,7 +165,7 @@ export default {
 
         // Show Pricelist
         let storeMsg = `*PTERODACTYL VPS STORE*\n\n`;
-        plans.forEach(p => {
+        plans.forEach((p) => {
             storeMsg += `*${p.id}. Plan ${p.name}*\n`;
             storeMsg += `Price: Rp ${p.price.toLocaleString()}\n`;
             storeMsg += `Specs: ${p.desc}\n`;
@@ -113,12 +173,12 @@ export default {
         });
 
         storeMsg += `\nTo buy, use: ${settings.prefix}buy <id>\nExample: ${settings.prefix}buy 1`;
-        
+
         // Add user balance info
         const user = await User.findOne({ jid: m.sender });
         const balance = user ? user.balance : 0;
         storeMsg += `\n\nYour Balance: Rp ${balance.toLocaleString()}`;
 
         await m.reply(storeMsg);
-    }
+    },
 };

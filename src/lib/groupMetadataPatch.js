@@ -1,4 +1,3 @@
-
 /**
  * Patches the groupMetadata method to handle group invite links.
  * If a link is passed instead of a JID, it automatically calls groupGetInviteInfo.
@@ -20,7 +19,7 @@ export const attachGroupMetadataPatch = (sock) => {
         if (jid.includes('chat.whatsapp.com/')) {
             const parts = jid.split('chat.whatsapp.com/');
             let code = parts[parts.length - 1]?.split('?')[0]?.trim();
-            
+
             if (code) {
                 // Strip legacy 'invite/' prefix if present
                 if (code.startsWith('invite/')) {
@@ -32,7 +31,9 @@ export const attachGroupMetadataPatch = (sock) => {
                 } catch (err) {
                     // If groupGetInviteInfo fails, it might be an invalid code or other issue
                     // We throw a more descriptive error instead of letting Baileys crash later
-                    const error = new Error(`Failed to fetch group info from link "${code}": ${err.message}`);
+                    const error = new Error(
+                        `Failed to fetch group info from link "${code}": ${err.message}`
+                    );
                     error.code = err.code || 'INVITE_ERROR';
                     throw error;
                 }

@@ -9,7 +9,8 @@ export default {
         try {
             if (!m.isGroup) return m.reply('Perintah ini hanya untuk grup.');
 
-            const settings = await Group.findOne({ jid: m.chat }) || await Group.create({ jid: m.chat });
+            const settings =
+                (await Group.findOne({ jid: m.chat })) || (await Group.create({ jid: m.chat }));
             const autoOpenStatus = settings.autoOpen ? '✅ Aktif' : '❌ Nonaktif';
             const autoCloseStatus = settings.autoClose ? '✅ Aktif' : '❌ Nonaktif';
 
@@ -33,5 +34,5 @@ export default {
         } catch (error) {
             await m.reply('❌ Terjadi kesalahan saat mengambil jadwal');
         }
-    }
+    },
 };

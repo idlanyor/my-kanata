@@ -6,20 +6,22 @@ const PTERO_API_KEY = process.env.PTERO_API_KEY; // Application API Key
 const ptero = axios.create({
     baseURL: `${PTERO_URL}/api/application`,
     headers: {
-        'Authorization': `Bearer ${PTERO_API_KEY}`,
+        Authorization: `Bearer ${PTERO_API_KEY}`,
         'Content-Type': 'application/json',
-        'Accept': 'Application/vnd.pterodactyl.v1+json',
-    }
+        Accept: 'Application/vnd.pterodactyl.v1+json',
+    },
 });
 
 export const findPteroUserByPhone = async (phone) => {
     try {
-        // Pterodactyl API doesn't have a direct phone filter in standard installs, 
+        // Pterodactyl API doesn't have a direct phone filter in standard installs,
         // so we search by external_id (which we'll use for JID) or custom logic.
-        // For now, we fetch all users and filter manually if necessary, 
+        // For now, we fetch all users and filter manually if necessary,
         // but better to search by email/username first.
         const usersResp = await ptero.get('/users');
-        const user = usersResp.data.data.find(u => u.attributes.external_id === phone || u.attributes.username.includes(phone));
+        const user = usersResp.data.data.find(
+            (u) => u.attributes.external_id === phone || u.attributes.username.includes(phone)
+        );
         return user ? user.attributes : null;
     } catch (error) {
         console.error('Find Ptero User Error:', error.message);
@@ -32,10 +34,10 @@ export const getClientAccount = async () => {
         const client = axios.create({
             baseURL: `${PTERO_URL}/api/client`,
             headers: {
-                'Authorization': `Bearer ${process.env.PTERO_CLIENT_KEY}`,
+                Authorization: `Bearer ${process.env.PTERO_CLIENT_KEY}`,
                 'Content-Type': 'application/json',
-                'Accept': 'Application/vnd.pterodactyl.v1+json',
-            }
+                Accept: 'Application/vnd.pterodactyl.v1+json',
+            },
         });
         const resp = await client.get('/account');
         return resp.data.attributes;
@@ -67,7 +69,7 @@ export const createPteroUser = async (data) => {
             username: data.username,
             first_name: data.firstName || data.username,
             last_name: data.lastName || 'BotUser',
-            external_id: data.externalId || ''
+            external_id: data.externalId || '',
         });
         return resp.data.attributes;
     } catch (error) {
@@ -129,7 +131,7 @@ export const createPteroServer = async (userJid, plan) => {
                         username: phone,
                         first_name: phone,
                         last_name: 'BotUser',
-                        external_id: userJid // Bind JID to external_id
+                        external_id: userJid, // Bind JID to external_id
                     });
                     pteroUser = createUserResp.data.attributes;
                 }
@@ -147,18 +149,19 @@ export const createPteroServer = async (userJid, plan) => {
             nest: parseInt(process.env.PTERO_NEST_ID) || 1,
             egg: parseInt(process.env.PTERO_EGG_ID) || 1,
             docker_image: 'ghcr.io/shirokamiryzen/yolks:nodejs_22',
-            startup: 'if [[ -d .git ]]; then git pull; fi; if [[ ! -z ${NODE_PACKAGES} ]]; then /usr/local/bin/npm install ${NODE_PACKAGES}; fi; /usr/local/bin/node /home/container/${MAIN_FILE}',
+            startup:
+                'if [[ -d .git ]]; then git pull; fi; if [[ ! -z ${NODE_PACKAGES} ]]; then /usr/local/bin/npm install ${NODE_PACKAGES}; fi; /usr/local/bin/node /home/container/${MAIN_FILE}',
             limits: {
                 memory: plan.ram,
                 swap: 0,
                 disk: plan.disk,
                 io: 500,
-                cpu: plan.cpu
+                cpu: plan.cpu,
             },
             feature_limits: {
                 databases: 0,
                 allocations: 1,
-                backups: 0
+                backups: 0,
             },
             environment: {
                 GIT_ADDRESS: '',
@@ -170,27 +173,30 @@ export const createPteroServer = async (userJid, plan) => {
                 ACCESS_TOKEN: '',
                 UNNODE_PACKAGES: '',
                 MAIN_FILE: 'index.js',
-                NODE_ARGS: ''
+                NODE_ARGS: '',
             },
             deploy: {
                 locations: [parseInt(process.env.PTERO_LOCATION_ID) || 1],
                 dedicated_ip: false,
-                port_range: []
+                port_range: [],
             },
-            start_on_completion: true
+            start_on_completion: true,
         };
 
         const createResp = await ptero.post('/servers', serverData);
         return createResp.data.attributes;
     } catch (error) {
         if (error.response?.data?.errors) {
-            console.error('Ptero Server Create Validation Errors:', JSON.stringify(error.response.data.errors, null, 2));
+            console.error(
+                'Ptero Server Create Validation Errors:',
+                JSON.stringify(error.response.data.errors, null, 2)
+            );
             throw new Error(`Ptero Validation Error: ${error.response.data.errors[0].detail}`);
         }
         console.error('Ptero Server Create Error:', error.response?.data || error.message);
         throw error;
     }
-}
+};
 
 export const getUserServers = async (userJid) => {
     try {
@@ -203,9 +209,9 @@ export const getUserServers = async (userJid) => {
         // 2. Get all servers for this user
         // Using Application API to list servers for a specific user ID
         const serversResp = await ptero.get('/servers');
-        const userServers = serversResp.data.data.filter(s => s.attributes.user === pteroUser.id);
-        
-        return userServers.map(s => s.attributes);
+        const userServers = serversResp.data.data.filter((s) => s.attributes.user === pteroUser.id);
+
+        return userServers.map((s) => s.attributes);
     } catch (error) {
         console.error('Get User Servers Error:', error.message);
         throw error;
@@ -219,10 +225,10 @@ export const setServerPowerState = async (serverIdentifier, signal) => {
         const client = axios.create({
             baseURL: `${PTERO_URL}/api/client`,
             headers: {
-                'Authorization': `Bearer ${process.env.PTERO_CLIENT_KEY}`,
+                Authorization: `Bearer ${process.env.PTERO_CLIENT_KEY}`,
                 'Content-Type': 'application/json',
-                'Accept': 'Application/vnd.pterodactyl.v1+json',
-            }
+                Accept: 'Application/vnd.pterodactyl.v1+json',
+            },
         });
 
         await client.post(`/servers/${serverIdentifier}/power`, { signal });
@@ -238,10 +244,10 @@ export const getServerResources = async (serverIdentifier) => {
         const client = axios.create({
             baseURL: `${PTERO_URL}/api/client`,
             headers: {
-                'Authorization': `Bearer ${process.env.PTERO_CLIENT_KEY}`,
+                Authorization: `Bearer ${process.env.PTERO_CLIENT_KEY}`,
                 'Content-Type': 'application/json',
-                'Accept': 'Application/vnd.pterodactyl.v1+json',
-            }
+                Accept: 'Application/vnd.pterodactyl.v1+json',
+            },
         });
 
         const resp = await client.get(`/servers/${serverIdentifier}/resources`);

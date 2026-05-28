@@ -1,4 +1,4 @@
-import { createRule } from '../../lib/cloudflare.js';
+import { createRule } from '../../services/cloudflare.js';
 import { settings } from '../../config/settings.js';
 
 export default {
@@ -7,7 +7,10 @@ export default {
     category: 'Cloudflare',
     execute: async (sock, m, args) => {
         const sender = m.sender;
-        const isOwner = sender === settings.ownerNumber || sender === settings.ownerLid || sender.split(':')[0] === settings.ownerNumber.split('@')[0];
+        const isOwner =
+            sender === settings.ownerNumber ||
+            sender === settings.ownerLid ||
+            sender.split(':')[0] === settings.ownerNumber.split('@')[0];
         if (!isOwner) return m.reply('Access Denied. Owner only.');
 
         const ip = args[0];
@@ -17,9 +20,11 @@ export default {
         await m.reply('Blocking IP...');
         try {
             const result = await createRule(ip, 'block', notes);
-            await m.reply(`Successfully BANNED IP: *${result.configuration.value}*\nID: ${result.id}`);
+            await m.reply(
+                `Successfully BANNED IP: *${result.configuration.value}*\nID: ${result.id}`
+            );
         } catch (error) {
             await m.reply(`Error: ${error.message}`);
         }
-    }
+    },
 };

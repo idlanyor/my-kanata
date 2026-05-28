@@ -14,7 +14,7 @@ export default [
             await Group.findOneAndUpdate({ jid: m.chat }, { welcomeMsg: text }, { upsert: true });
             clearSettingsCache();
             m.reply(` Berhasil mengatur pesan welcome:\n\n${text}`);
-        }
+        },
     },
     {
         name: 'setleave',
@@ -28,7 +28,7 @@ export default [
             await Group.findOneAndUpdate({ jid: m.chat }, { leaveMsg: text }, { upsert: true });
             clearSettingsCache();
             m.reply(` Berhasil mengatur pesan leave:\n\n${text}`);
-        }
+        },
     },
     {
         name: 'welcome',
@@ -36,12 +36,13 @@ export default [
         category: 'Group',
         execute: async (sock, m, args, text) => {
             if (!m.isGroup) return m.reply('Hanya di grup!');
-            let group = await Group.findOne({ jid: m.chat }) || await Group.create({ jid: m.chat });
+            let group =
+                (await Group.findOne({ jid: m.chat })) || (await Group.create({ jid: m.chat }));
             group.welcome = !group.welcome;
             await group.save();
             clearSettingsCache();
             m.reply(` Fitur Welcome berhasil ${group.welcome ? '*DIAKTIFKAN*' : '*DIMATIKAN*'}`);
-        }
+        },
     },
     {
         name: 'leave',
@@ -49,11 +50,12 @@ export default [
         category: 'Group',
         execute: async (sock, m, args, text) => {
             if (!m.isGroup) return m.reply('Hanya di grup!');
-            let group = await Group.findOne({ jid: m.chat }) || await Group.create({ jid: m.chat });
+            let group =
+                (await Group.findOne({ jid: m.chat })) || (await Group.create({ jid: m.chat }));
             group.left = !group.left;
             await group.save();
             clearSettingsCache();
             m.reply(` Fitur Leave berhasil ${group.left ? '*DIAKTIFKAN*' : '*DIMATIKAN*'}`);
-        }
-    }
+        },
+    },
 ];

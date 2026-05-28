@@ -9,16 +9,20 @@ export default {
     category: 'Owner',
     execute: async (sock, m, args, text) => {
         const sender = m.sender;
-        const isOwner = sender === settings.ownerNumber || sender === settings.ownerLid || sender.split(':')[0] === settings.ownerNumber.split('@')[0];
+        const isOwner =
+            sender === settings.ownerNumber ||
+            sender === settings.ownerLid ||
+            sender.split(':')[0] === settings.ownerNumber.split('@')[0];
         if (!isOwner) return;
 
         const commandStr = m.body.slice(settings.prefix.length).trim().split(' ')[0].toLowerCase();
-        
+
         let botSettings = await Settings.findOne({ id: 'bot_settings' });
         if (!botSettings) botSettings = await Settings.create({ id: 'bot_settings' });
 
         if (commandStr === 'listdisable') {
-            if (botSettings.disabledCommands.length === 0) return m.reply('No commands are currently disabled.');
+            if (botSettings.disabledCommands.length === 0)
+                return m.reply('No commands are currently disabled.');
             let msg = `*Disabled Commands List*\n\n`;
             botSettings.disabledCommands.forEach((cmd, i) => {
                 msg += `${i + 1}. ${cmd}\n`;
@@ -41,15 +45,15 @@ export default {
             botSettings.disabledCommands.push(cmd.name);
             await botSettings.save();
             await m.reply(`Successfully disabled command: *${cmd.name}*`);
-        } 
-        
-        else if (commandStr === 'enable') {
+        } else if (commandStr === 'enable') {
             if (!botSettings.disabledCommands.includes(cmd.name)) {
                 return m.reply(`Command *${cmd.name}* is not disabled.`);
             }
-            botSettings.disabledCommands = botSettings.disabledCommands.filter(c => c !== cmd.name);
+            botSettings.disabledCommands = botSettings.disabledCommands.filter(
+                (c) => c !== cmd.name
+            );
             await botSettings.save();
             await m.reply(`Successfully enabled command: *${cmd.name}*`);
         }
-    }
+    },
 };

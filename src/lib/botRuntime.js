@@ -5,7 +5,7 @@ import axios from 'axios';
 import fsExtra from 'fs-extra';
 import { messageHandler, clearSettingsCache } from '../handlers/messageHandler.js';
 import { groupParticipantsUpdate } from '../handlers/groupHandler.js';
-import logger from './logger.js';
+import logger from '../utils/logger.js';
 import { sendBackupToOwner } from './backup.js';
 import Server from '../database/models/Server.js';
 import Group from '../database/models/Group.js';
@@ -19,7 +19,8 @@ const safeAck = (ack, payload) => {
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const isAlreadyLeftError = (message) => /not\s+a?\s*participant|not\s*found|404|bad request|forbidden|group.*not.*found/i.test(message);
+const isAlreadyLeftError = (message) =>
+    /not\s+a?\s*participant|not\s*found|404|bad request|forbidden|group.*not.*found/i.test(message);
 
 const runGroupSync = async (sock, data, ack) => {
     try {
@@ -82,7 +83,10 @@ const runGroupDelete = async (sock, data, ack) => {
     } catch (err) {
         const message = String(err?.message || err || '');
         if (isAlreadyLeftError(message)) {
-            botSocket.emitLog(`Group leave skipped (already left): ${data.groupName || targetJid}`, 'warning');
+            botSocket.emitLog(
+                `Group leave skipped (already left): ${data.groupName || targetJid}`,
+                'warning'
+            );
             safeAck(ack, { ok: true, alreadyLeft: true });
             return;
         }
@@ -105,7 +109,13 @@ const registerBotSocketCommands = (sock) => {
     });
 };
 
-export const registerSocketEvents = ({ sock, saveCreds, connectToWhatsApp, authFolder, onOpen }) => {
+export const registerSocketEvents = ({
+    sock,
+    saveCreds,
+    connectToWhatsApp,
+    authFolder,
+    onOpen,
+}) => {
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect, qr } = update;
 
@@ -129,13 +139,19 @@ export const registerSocketEvents = ({ sock, saveCreds, connectToWhatsApp, authF
             }
 
             if (statusCode === DisconnectReason.connectionReplaced) {
-                logger.error('WhatsApp session was replaced by another connection. Stopping auto-reconnect to avoid a 440 loop.');
+                logger.error(
+                    'WhatsApp session was replaced by another connection. Stopping auto-reconnect to avoid a 440 loop.'
+                );
                 return;
             }
 
             const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
             if (shouldReconnect) {
-                if (statusCode === DisconnectReason.restartRequired || statusCode === DisconnectReason.connectionLost || statusCode === 405) {
+                if (
+                    statusCode === DisconnectReason.restartRequired ||
+                    statusCode === DisconnectReason.connectionLost ||
+                    statusCode === 405
+                ) {
                     setTimeout(() => connectToWhatsApp(), 5000);
                 } else {
                     connectToWhatsApp();
@@ -167,86 +183,109 @@ export const registerSocketEvents = ({ sock, saveCreds, connectToWhatsApp, authF
 };
 
 const scheduleBackup = (sock) => {
-    cron.schedule('0 0 * * *', () => {
-        logger.info('Running automated database backup...');
-        sendBackupToOwner(sock);
-    }, { scheduled: true, timezone: 'Asia/Jakarta' });
+    cron.schedule(
+        '0 0 * * *',
+        () => {
+            logger.info('Running automated database backup...');
+            sendBackupToOwner(sock);
+        },
+        { scheduled: true, timezone: 'Asia/Jakarta' }
+    );
 };
 
 const scheduleAutoSuspend = (sock) => {
-    cron.schedule('0 * * * *', async () => {
-        try {
-            const sevenDaysAgo = new Date(Date.now() - (7 * 24 * 60 * 60 * 1000));
-            const expiredServers = await Server.find({ expiredAt: { $lt: sevenDaysAgo }, status: 'active' });
-            if (expiredServers.length === 0) return;
+    cron.schedule(
+        '0 * * * *',
+        async () => {
+            try {
+                const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+                const expiredServers = await Server.find({
+                    expiredAt: { $lt: sevenDaysAgo },
+                    status: 'active',
+                });
+                if (expiredServers.length === 0) return;
 
-            const ptero = axios.create({
-                baseURL: `${process.env.PTERO_URL}/api/application`,
-                headers: {
-                    Authorization: `Bearer ${process.env.PTERO_API_KEY}`,
-                    'Content-Type': 'application/json',
-                    Accept: 'Application/vnd.pterodactyl.v1+json',
-                },
-            });
+                const ptero = axios.create({
+                    baseURL: `${process.env.PTERO_URL}/api/application`,
+                    headers: {
+                        Authorization: `Bearer ${process.env.PTERO_API_KEY}`,
+                        'Content-Type': 'application/json',
+                        Accept: 'Application/vnd.pterodactyl.v1+json',
+                    },
+                });
 
-            for (const srv of expiredServers) {
-                try {
-                    await ptero.post(`/servers/${srv.pteroId}/suspend`);
-                    srv.status = 'suspended';
-                    await srv.save();
-                    await sock.sendMessage(srv.userId, {
-                        text: `*LAYANAN DI-SUSPEND*\n\nServer Anda *${srv.planName}* (ID: ${srv.identifier}) telah ditangguhkan karena melewati jatuh tempo lebih dari 7 hari.\nSilakan perpanjang untuk mengaktifkan kembali.`,
-                    });
-                } catch (err) {
-                    logger.error(`[SYSTEM] Failed to suspend server ${srv.pteroId}: ${err.message}`);
+                for (const srv of expiredServers) {
+                    try {
+                        await ptero.post(`/servers/${srv.pteroId}/suspend`);
+                        srv.status = 'suspended';
+                        await srv.save();
+                        await sock.sendMessage(srv.userId, {
+                            text: `*LAYANAN DI-SUSPEND*\n\nServer Anda *${srv.planName}* (ID: ${srv.identifier}) telah ditangguhkan karena melewati jatuh tempo lebih dari 7 hari.\nSilakan perpanjang untuk mengaktifkan kembali.`,
+                        });
+                    } catch (err) {
+                        logger.error(
+                            `[SYSTEM] Failed to suspend server ${srv.pteroId}: ${err.message}`
+                        );
+                    }
                 }
+            } catch (err) {
+                logger.error('[SYSTEM] Error in auto-suspend task:', err);
             }
-        } catch (err) {
-            logger.error('[SYSTEM] Error in auto-suspend task:', err);
-        }
-    }, { scheduled: true, timezone: 'Asia/Jakarta' });
+        },
+        { scheduled: true, timezone: 'Asia/Jakarta' }
+    );
 };
 
 const scheduleExpiryReminder = (sock) => {
-    cron.schedule('0 8 * * *', async () => {
-        try {
-            const fiveDaysLater = new Date();
-            fiveDaysLater.setDate(fiveDaysLater.getDate() + 5);
-            const startOf5Days = new Date(fiveDaysLater.setHours(0, 0, 0, 0));
-            const endOf5Days = new Date(fiveDaysLater.setHours(23, 59, 59, 999));
+    cron.schedule(
+        '0 8 * * *',
+        async () => {
+            try {
+                const fiveDaysLater = new Date();
+                fiveDaysLater.setDate(fiveDaysLater.getDate() + 5);
+                const startOf5Days = new Date(fiveDaysLater.setHours(0, 0, 0, 0));
+                const endOf5Days = new Date(fiveDaysLater.setHours(23, 59, 59, 999));
 
-            const expiringServers = await Server.find({
-                expiredAt: { $gte: startOf5Days, $lte: endOf5Days },
-                status: 'active',
-            });
-
-            for (const srv of expiringServers) {
-                await sock.sendMessage(srv.userId, {
-                    text: `*REMINDER MASA AKTIF*\n\nServer Anda *${srv.planName}* (ID: ${srv.identifier}) akan expired dalam *5 hari* lagi (${srv.expiredAt.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}).\n\nSegera lakukan perpanjangan agar layanan tidak terputus.`,
+                const expiringServers = await Server.find({
+                    expiredAt: { $gte: startOf5Days, $lte: endOf5Days },
+                    status: 'active',
                 });
+
+                for (const srv of expiringServers) {
+                    await sock.sendMessage(srv.userId, {
+                        text: `*REMINDER MASA AKTIF*\n\nServer Anda *${srv.planName}* (ID: ${srv.identifier}) akan expired dalam *5 hari* lagi (${srv.expiredAt.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}).\n\nSegera lakukan perpanjangan agar layanan tidak terputus.`,
+                    });
+                }
+            } catch (err) {
+                logger.error('[SYSTEM] Error in reminder task:', err);
             }
-        } catch (err) {
-            logger.error('[SYSTEM] Error in reminder task:', err);
-        }
-    }, { scheduled: true, timezone: 'Asia/Jakarta' });
+        },
+        { scheduled: true, timezone: 'Asia/Jakarta' }
+    );
 };
 
 /**
  * Schedule periodic cache cleanup (every 10 minutes)
  */
 const scheduleCacheCleanup = () => {
-    cron.schedule('*/10 * * * *', () => {
-        try {
-            const chatCleaned = cleanupChatHistories();
-            const cacheCleaned = cleanupCaches();
-            
-            if (chatCleaned > 0 || cacheCleaned > 0) {
-                logger.info(`[CACHE] Cleaned up ${chatCleaned} chat histories and ${cacheCleaned} cache entries`);
+    cron.schedule(
+        '*/10 * * * *',
+        () => {
+            try {
+                const chatCleaned = cleanupChatHistories();
+                const cacheCleaned = cleanupCaches();
+
+                if (chatCleaned > 0 || cacheCleaned > 0) {
+                    logger.info(
+                        `[CACHE] Cleaned up ${chatCleaned} chat histories and ${cacheCleaned} cache entries`
+                    );
+                }
+            } catch (err) {
+                logger.error('[SYSTEM] Error in cache cleanup task:', err);
             }
-        } catch (err) {
-            logger.error('[SYSTEM] Error in cache cleanup task:', err);
-        }
-    }, { scheduled: true, timezone: 'Asia/Jakarta' });
+        },
+        { scheduled: true, timezone: 'Asia/Jakarta' }
+    );
 };
 
 export const registerRecurringTasks = (sock) => {

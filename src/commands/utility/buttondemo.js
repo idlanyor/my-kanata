@@ -5,7 +5,7 @@ export default {
     category: 'Utility',
     execute: async (sock, m, args) => {
         const mode = (args[0] || 'all').toLowerCase();
-        const targetChat = (!m.isGroup && m.chatAlt && m.chatAlt !== m.chat) ? m.chatAlt : m.chat;
+        const targetChat = !m.isGroup && m.chatAlt && m.chatAlt !== m.chat ? m.chatAlt : m.chat;
 
         const payload = {
             text: 'Demo interactive buttons non-list',

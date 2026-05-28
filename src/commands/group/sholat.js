@@ -30,7 +30,9 @@ ${settings.prefix}sholat search <city name> - Search for city ID`);
                 if (group.prayerReminder) return m.reply('Prayer reminders are already enabled.');
                 group.prayerReminder = true;
                 await group.save();
-                m.reply(`Prayer reminders enabled for city: ${group.cityName} (ID: ${group.cityId})`);
+                m.reply(
+                    `Prayer reminders enabled for city: ${group.cityName} (ID: ${group.cityId})`
+                );
                 break;
 
             case 'disable':
@@ -42,10 +44,11 @@ ${settings.prefix}sholat search <city name> - Search for city ID`);
                 break;
 
             case 'setcity':
-                if (!args[1]) return m.reply(`Please provide a city ID.
+                if (!args[1])
+                    return m.reply(`Please provide a city ID.
 Example: ${settings.prefix}sholat setcity 1420`);
                 const cityId = args[1];
-                
+
                 // Verify ID by fetching schedule
                 try {
                     const res = await get(`/sholat/jadwal/${cityId}`);
@@ -72,8 +75,86 @@ City: ${group.cityName}
 ID: ${group.cityId}`);
                 break;
 
+            case 'jadwal':
+            case 'schedule':
+                if (!group.cityId)
+                    return m.reply(`City not set. Please set city first using:
+${settings.prefix}sholat search <city>
+${settings.prefix}sholat setcity <id>`);
+
+                try {
+                    const res = await get(`/sholat/jadwal/${group.cityId}`);
+                    if (!res || !res.jadwal) return m.reply('Could not fetch prayer schedule.');
+
+                    const j = res.jadwal;
+                    const prayerTimes = [
+                        { name: 'Imsak', time: j.imsak },
+                        { name: 'Subuh', time: j.subuh },
+                        { name: 'Terbit', time: j.terbit },
+                        { name: 'Dhuha', time: j.dhuha },
+                        { name: 'Dzuhur', time: j.dzuhur },
+                        { name: 'Ashar', time: j.ashar },
+                        { name: 'Maghrib', time: j.maghrib },
+                        { name: 'Isya', time: j.isya },
+                    ];
+
+                    const tableRows = prayerTimes.map((p) => ({
+                        items: [p.name, p.time],
+                        isHeading: false,
+                    }));
+
+                    const msg = {
+                        botForwardedMessage: {
+                            message: {
+                                richResponseMessage: {
+                                    messageType: 1,
+                                    submessages: [
+                                        {
+                                            messageType: 2,
+                                            messageText: `🕋 *JADWAL SHOLAT HARI INI*\nWilayah: ${res.lokasi}\nTanggal: ${j.tanggal}`,
+                                        },
+                                        {
+                                            messageType: 4,
+                                            tableMetadata: {
+                                                title: 'Prayer Times',
+                                                rows: [
+                                                    { items: ['Ibadah', 'Waktu'], isHeading: true },
+                                                    ...tableRows,
+                                                ],
+                                            },
+                                        },
+                                    ],
+                                    contextInfo: {
+                                        forwardingScore: 1,
+                                        isForwarded: true,
+                                        forwardedAiBotMessageInfo: {
+                                            botJid: '867051314767696@bot',
+                                        },
+                                        forwardOrigin: 4,
+                                        stanzaId: m.key.id,
+                                        participant: m.sender,
+                                        quotedMessage: m.message,
+                                    },
+                                },
+                            },
+                        },
+                        messageContextInfo: {
+                            botMetadata: {
+                                messageDisclaimerText: 'Islamic Prayer Schedule AI',
+                            },
+                        },
+                    };
+
+                    await sock.relayMessage(m.chat, msg, { messageId: sock.generateMessageTag() });
+                } catch (e) {
+                    console.error(e);
+                    m.reply('Error fetching prayer schedule.');
+                }
+                break;
+
             case 'search':
-                if (!args[1]) return m.reply(`Please provide a city name.
+                if (!args[1])
+                    return m.reply(`Please provide a city name.
 Example: ${settings.prefix}sholat search purbalingga`);
                 const query = text.replace('search', '').trim();
                 try {
@@ -83,15 +164,18 @@ Example: ${settings.prefix}sholat search purbalingga`);
                     // Let's assume there is a search endpoint as it is standard.
                     const searchRes = await get(`/sholat/kota/cari/${encodeURIComponent(query)}`);
                     if (searchRes && searchRes.status === true && Array.isArray(searchRes.data)) {
-                         const list = searchRes.data.map(c => `ID: ${c.id} | ${c.lokasi}`).join('\n');
-                         m.reply(`Search Results:
+                        const list = searchRes.data
+                            .map((c) => `ID: ${c.id} | ${c.lokasi}`)
+                            .join('\n');
+                        m.reply(`Search Results:
 ${list}`);
-                    } else if (Array.isArray(searchRes)) { // Handle if direct array
-                         const list = searchRes.map(c => `ID: ${c.id} | ${c.lokasi}`).join('\n');
-                         m.reply(`Search Results:
+                    } else if (Array.isArray(searchRes)) {
+                        // Handle if direct array
+                        const list = searchRes.map((c) => `ID: ${c.id} | ${c.lokasi}`).join('\n');
+                        m.reply(`Search Results:
 ${list}`);
                     } else {
-                         m.reply('City not found.');
+                        m.reply('City not found.');
                     }
                 } catch (e) {
                     // Fallback if search endpoint is different, maybe just tell user to find ID elsewhere for now
@@ -103,5 +187,5 @@ ${list}`);
             default:
                 m.reply('Invalid argument.');
         }
-    }
+    },
 };

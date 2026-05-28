@@ -1,6 +1,7 @@
 import axios from 'axios';
 import ytSearch from 'yt-search';
 import { fetchAPI } from '../../lib/api.js';
+import logger from '../../utils/logger.js';
 
 export default {
     name: 'playv',
@@ -10,11 +11,11 @@ export default {
     execute: async (sock, m, args, text) => {
         if (!text) return m.reply('Please provide a song title or YouTube URL.');
 
-        const resFlag = args.find(arg => arg.startsWith('--') && /\d+/.test(arg));
+        const resFlag = args.find((arg) => arg.startsWith('--') && /\d+/.test(arg));
         const requestedRes = resFlag ? resFlag.replace('--', '') : null;
         const cleanQuery = text.replace(resFlag, '').trim();
 
-        // console.log(`[DEBUG] Playv command triggered with text: ${cleanQuery}`);
+        // logger.info(`[DEBUG] Playv command triggered with text: ${cleanQuery}`);
         await m.react('⏳');
 
         try {
@@ -26,7 +27,9 @@ export default {
                 return m.reply('No results found.');
             }
 
-            const data = await fetchAPI('https://api.kanata.web.id/ytdown/fetch', { url: video.url });
+            const data = await fetchAPI('https://api.kanata.web.id/ytdown/fetch', {
+                url: video.url,
+            });
 
             if (!data || data.status !== 'success' || !data.data?.links) {
                 await m.react('❌');
@@ -35,14 +38,22 @@ export default {
 
             let videoLink;
             if (requestedRes) {
-                videoLink = data.data.links.find(l => l.type === 'Video' && l.res.includes(requestedRes));
+                videoLink = data.data.links.find(
+                    (l) => l.type === 'Video' && l.res.includes(requestedRes)
+                );
             }
-            
+
             if (!videoLink) {
                 // Default to 360p, then HD, then whatever is available
-                videoLink = data.data.links.find(l => l.type === 'Video' && (l.res.includes('360') || l.quality === 'SD' && l.res.includes('640x360'))) ||
-                            data.data.links.find(l => l.type === 'Video' && l.quality === 'HD') || 
-                            data.data.links.find(l => l.type === 'Video');
+                videoLink =
+                    data.data.links.find(
+                        (l) =>
+                            l.type === 'Video' &&
+                            (l.res.includes('360') ||
+                                (l.quality === 'SD' && l.res.includes('640x360')))
+                    ) ||
+                    data.data.links.find((l) => l.type === 'Video' && l.quality === 'HD') ||
+                    data.data.links.find((l) => l.type === 'Video');
             }
 
             if (!videoLink) {
@@ -62,18 +73,19 @@ export default {
                 return hDisplay + mDisplay + sDisplay;
             };
 
-            const caption = ` *YouTube Video*\n\n` +
-                            ` *Title:* ${data.data.title || video.title}\n` +
-                            ` *Channel:* ${data.data.user_info?.name || video.author.name}\n` +
-                            ` *Duration:* ${videoLink.duration || video.timestamp || formatDuration(video.seconds)}\n` +
-                            ` *Size:* ${videoLink.size}\n` +
-                            ` *Quality:* ${videoLink.quality || videoLink.res}\n` +
-                            ` *Source:* Kanata API\n\n` +
-                            ` *Description:*\n${(data.data.description || video.description || 'No description available').slice(0, 500)}`;
+            const caption =
+                ` *YouTube Video*\n\n` +
+                ` *Title:* ${data.data.title || video.title}\n` +
+                ` *Channel:* ${data.data.user_info?.name || video.author.name}\n` +
+                ` *Duration:* ${videoLink.duration || video.timestamp || formatDuration(video.seconds)}\n` +
+                ` *Size:* ${videoLink.size}\n` +
+                ` *Quality:* ${videoLink.quality || videoLink.res}\n` +
+                ` *Source:* Kanata API\n\n` +
+                ` *Description:*\n${(data.data.description || video.description || 'No description available').slice(0, 500)}`;
             const safeCaption = caption.slice(0, 950);
 
             let finalUrl = videoLink.proxy_url || videoLink.url;
-            
+
             // If it's a proxy_url, it might return a JSON with the real fileUrl
             if (videoLink.proxy_url) {
                 try {
@@ -82,7 +94,7 @@ export default {
                         finalUrl = proxyResp.data.fileUrl;
                     }
                 } catch (e) {
-                    console.error('Proxy URL fetch failed, falling back to direct URL:', e.message);
+                    logger.error('Proxy URL fetch failed, falling back to direct URL:', e.message);
                     if (!videoLink.url || videoLink.url === 'Waiting...') {
                         await m.react('❌');
                         return m.reply('Failed to retrieve final video URL.');
@@ -93,30 +105,35 @@ export default {
 
             if (!finalUrl || finalUrl === 'Waiting...') {
                 await m.react('❌');
-                return m.reply('Video is still processing or unavailable. Please try again in a moment.');
+                return m.reply(
+                    'Video is still processing or unavailable. Please try again in a moment.'
+                );
             }
 
             // Download as buffer to ensure it's playable on mobile
-            const videoResponse = await axios.get(finalUrl, { 
+            const videoResponse = await axios.get(finalUrl, {
                 responseType: 'arraybuffer',
                 headers: {
-                    'accept': '*/*'
-                }
+                    accept: '*/*',
+                },
             });
             const videoBuffer = Buffer.from(videoResponse.data);
 
-            await sock.sendMessage(m.chat, { 
-                video: videoBuffer, 
-                mimetype: 'video/mp4',
-                caption: safeCaption,
-                fileName: `${data.data.title || video.title}.mp4`
-            }, { quoted: m });
+            await sock.sendMessage(
+                m.chat,
+                {
+                    video: videoBuffer,
+                    mimetype: 'video/mp4',
+                    caption: safeCaption,
+                    fileName: `${data.data.title || video.title}.mp4`,
+                },
+                { quoted: m }
+            );
             await m.react('✅');
-
         } catch (err) {
-            console.error(`[DEBUG] Playv command failed:`, err);
+            logger.error(`[DEBUG] Playv command failed:`, err);
             await m.react('❌');
             await m.reply(' An error occurred while processing the video.');
         }
-    }
+    },
 };

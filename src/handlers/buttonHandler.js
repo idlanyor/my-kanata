@@ -6,16 +6,18 @@ import { buttonHandlers } from '../lib/commands.js';
  */
 export const handleButtons = async (sock, m, isOwner) => {
     // Ambil buttonId dari berbagai kemungkinan tipe pesan
-    const buttonId = m.message?.buttonsResponseMessage?.selectedButtonId || 
-                     m.message?.templateButtonReplyMessage?.selectedId || 
-                     m.message?.listResponseMessage?.singleSelectReply?.selectedRowId || '';
+    const buttonId =
+        m.message?.buttonsResponseMessage?.selectedButtonId ||
+        m.message?.templateButtonReplyMessage?.selectedId ||
+        m.message?.listResponseMessage?.singleSelectReply?.selectedRowId ||
+        '';
 
     if (!buttonId) return false;
 
     // Ambil prefix (bagian sebelum underscore pertama)
     // Contoh: 'ttdl_video_xyz' -> prefix: 'ttdl'
     const prefix = buttonId.split('_')[0].toLowerCase();
-    
+
     // Cari handler yang cocok di Map buttonHandlers
     const handler = buttonHandlers.get(prefix);
 

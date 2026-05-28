@@ -5,39 +5,43 @@ export default {
     execute: async (sock, m, args, text) => {
         const interactiveMessage = {
             header: {
-                title: " WEBVIEW TEST",
-                hasMediaAttachment: false
+                title: ' WEBVIEW TEST',
+                hasMediaAttachment: false,
             },
             body: {
-                text: "Tombol ini akan mencoba membuka Webview di dalam WhatsApp (Hanya support di beberapa versi WA Business/Beta)."
+                text: 'Tombol ini akan mencoba membuka Webview di dalam WhatsApp (Hanya support di beberapa versi WA Business/Beta).',
             },
             footer: {
-                text: "Experimental by Kanata-Baileys"
+                text: 'Experimental by Kanata-Baileys',
             },
             nativeFlowMessage: {
                 buttons: [
                     {
-                        name: "open_webview",
+                        name: 'open_webview',
                         buttonParamsJson: JSON.stringify({
-                            title: "Buka Dashboard",
+                            title: 'Buka Dashboard',
                             link: {
-                                url: "https://api.kanata.web.id"
+                                url: 'https://api.kanata.web.id',
                             },
-                            has_multiple_buttons: true
-                        })
-                    }
-                ]
-            }
+                            has_multiple_buttons: true,
+                        }),
+                    },
+                ],
+            },
         };
 
         try {
-            await sock.sendMessage(m.chat, {
-                interactive: interactiveMessage,
-                viewOnce: true
-            }, { quoted: m });
+            await sock.sendMessage(
+                m.chat,
+                {
+                    interactive: interactiveMessage,
+                    viewOnce: true,
+                },
+                { quoted: m }
+            );
         } catch (err) {
             console.error(err);
             m.reply('Gagal mengirim Webview Button.');
         }
-    }
+    },
 };

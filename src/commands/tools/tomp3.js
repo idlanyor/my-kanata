@@ -1,7 +1,7 @@
 import { promisify } from 'util';
 import { exec } from 'child_process';
 import fs from 'fs';
-import { makeResultPath } from '../../lib/resultPath.js';
+import { makeResultPath } from '../../utils/resultPath.js';
 
 const execPromise = promisify(exec);
 
@@ -29,7 +29,9 @@ export default {
                 return m.reply('❌ Gagal mengunduh media.');
             }
 
-            const inputFileName = `input_${Date.now()}_${Math.floor(Math.random() * 1000)}` + (isVideo ? '.mp4' : '.ogg');
+            const inputFileName =
+                `input_${Date.now()}_${Math.floor(Math.random() * 1000)}` +
+                (isVideo ? '.mp4' : '.ogg');
             const outputFileName = `output_${Date.now()}_${Math.floor(Math.random() * 1000)}.mp3`;
             const inputFilePath = makeResultPath(inputFileName);
             const outputFilePath = makeResultPath(outputFileName);
@@ -40,16 +42,22 @@ export default {
             // -vn: no video
             // -acodec libmp3lame: mp3 codec
             // -q:a 2: high quality VBR
-            await execPromise(`ffmpeg -i "${inputFilePath}" -vn -acodec libmp3lame -q:a 2 "${outputFilePath}"`);
+            await execPromise(
+                `ffmpeg -i "${inputFilePath}" -vn -acodec libmp3lame -q:a 2 "${outputFilePath}"`
+            );
 
             if (fs.existsSync(outputFilePath)) {
                 const audioBuffer = await fs.promises.readFile(outputFilePath);
-                
-                await sock.sendMessage(m.chat, { 
-                    audio: audioBuffer, 
-                    mimetype: 'audio/mpeg',
-                    fileName: `${Date.now()}.mp3`
-                }, { quoted: m });
+
+                await sock.sendMessage(
+                    m.chat,
+                    {
+                        audio: audioBuffer,
+                        mimetype: 'audio/mpeg',
+                        fileName: `${Date.now()}.mp3`,
+                    },
+                    { quoted: m }
+                );
 
                 // Cleanup
                 await fs.promises.unlink(inputFilePath).catch(() => {});
@@ -58,11 +66,10 @@ export default {
             } else {
                 throw new Error('Output file not generated');
             }
-
         } catch (error) {
             console.error('ToMP3 Error:', error);
             await m.react('❌');
             await m.reply(`❌ Gagal mengekstrak audio: ${error.message}`);
         }
-    }
+    },
 };

@@ -1,7 +1,7 @@
 import { promisify } from 'util';
 import { exec } from 'child_process';
 import fs from 'fs';
-import { makeResultPath } from '../../lib/resultPath.js';
+import { makeResultPath } from '../../utils/resultPath.js';
 
 const execPromise = promisify(exec);
 
@@ -37,7 +37,9 @@ export default {
             await fs.promises.writeFile(inputFilePath, buffer);
 
             // Convert to OPUS for WhatsApp Voice Note
-            await execPromise(`ffmpeg -i "${inputFilePath}" -vn -c:a libopus -b:a 128k -vbr on -compression_level 10 "${outputFilePath}"`);
+            await execPromise(
+                `ffmpeg -i "${inputFilePath}" -vn -c:a libopus -b:a 128k -vbr on -compression_level 10 "${outputFilePath}"`
+            );
 
             if (fs.existsSync(outputFilePath)) {
                 const audioBuffer = await fs.promises.readFile(outputFilePath);
@@ -51,12 +53,16 @@ export default {
                     waveform[i] = Math.min(255, pulse + noise);
                 }
 
-                await sock.sendMessage(m.chat, { 
-                    audio: audioBuffer, 
-                    ptt: true, 
-                    waveform: Buffer.from(waveform), 
-                    mimetype: 'audio/ogg; codecs=opus'
-                }, { quoted: m });
+                await sock.sendMessage(
+                    m.chat,
+                    {
+                        audio: audioBuffer,
+                        ptt: true,
+                        waveform: Buffer.from(waveform),
+                        mimetype: 'audio/ogg; codecs=opus',
+                    },
+                    { quoted: m }
+                );
 
                 // Cleanup
                 await fs.promises.unlink(inputFilePath).catch(() => {});
@@ -65,11 +71,10 @@ export default {
             } else {
                 throw new Error('Output file not generated');
             }
-
         } catch (error) {
             console.error('ToVN Error:', error);
             await m.react('❌');
             await m.reply(`❌ Gagal mengonversi ke VN: ${error.message}`);
         }
-    }
+    },
 };

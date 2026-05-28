@@ -11,7 +11,10 @@ export default {
         if (!isOwner) return;
 
         const target = args[0];
-        if (!target) return m.reply('Masukkan username TikTok atau link profil!\nContoh: .ttscan @soffymedicallambulnce21');
+        if (!target)
+            return m.reply(
+                'Masukkan username TikTok atau link profil!\nContoh: .ttscan @soffymedicallambulnce21'
+            );
 
         await m.react('⏳');
 
@@ -19,16 +22,18 @@ export default {
 
         if (videos.length === 0) {
             await m.react('❌');
-            return m.reply('Gagal mendapatkan video. Pastikan akun tidak privat atau coba lagi nanti.');
+            return m.reply(
+                'Gagal mendapatkan video. Pastikan akun tidak privat atau coba lagi nanti.'
+            );
         }
 
         let resMsg = `*── 「 TIKTOK SCANNER 」 ──*\n\n`;
         resMsg += `➛ *Target:* ${target}\n`;
         resMsg += `➛ *Total Video:* ${videos.length}\n\n`;
-        
+
         resMsg += videos.join('\n');
 
         await m.reply(resMsg);
         await m.react('✅');
-    }
+    },
 };

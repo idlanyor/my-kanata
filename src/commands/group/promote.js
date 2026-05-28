@@ -1,5 +1,5 @@
 import { jidNormalizedUser } from 'baileys';
-import logger from '../../lib/logger.js';
+import logger from '../../utils/logger.js';
 
 export default {
     name: 'promote',
@@ -12,18 +12,22 @@ export default {
         // Check if the user is admin
         const groupMetadata = await sock.groupMetadata(m.chat);
         const participants = groupMetadata.participants;
-        
+
         const botJid = jidNormalizedUser(sock.user.id);
         const botLid = sock.user.lid ? jidNormalizedUser(sock.user.lid) : null;
 
-        const userAdmin = participants.find(p => jidNormalizedUser(p.id) === jidNormalizedUser(m.sender));
-        const botAdmin = participants.find(p => {
+        const userAdmin = participants.find(
+            (p) => jidNormalizedUser(p.id) === jidNormalizedUser(m.sender)
+        );
+        const botAdmin = participants.find((p) => {
             const pid = jidNormalizedUser(p.id);
             return pid === botJid || pid === botLid;
         });
 
-        const isUserAdmin = userAdmin && (userAdmin.admin === 'admin' || userAdmin.admin === 'superadmin');
-        const isBotAdmin = botAdmin && (botAdmin.admin === 'admin' || botAdmin.admin === 'superadmin');
+        const isUserAdmin =
+            userAdmin && (userAdmin.admin === 'admin' || userAdmin.admin === 'superadmin');
+        const isBotAdmin =
+            botAdmin && (botAdmin.admin === 'admin' || botAdmin.admin === 'superadmin');
 
         if (!isUserAdmin) return m.reply(' This command is for group admins only.');
         if (!isBotAdmin) return m.reply(' I need to be an admin to promote someone.');
@@ -42,10 +46,12 @@ export default {
 
         try {
             await sock.groupParticipantsUpdate(m.chat, [target], 'promote');
-            await m.reply(` Successfully promoted @${target.split('@')[0]} to admin.`, { mentions: [target] });
+            await m.reply(` Successfully promoted @${target.split('@')[0]} to admin.`, {
+                mentions: [target],
+            });
         } catch (err) {
             logger.error(err, 'Error in promote command');
             await m.reply(' Failed to promote user. Make sure the user is still in the group.');
         }
-    }
+    },
 };

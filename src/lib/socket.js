@@ -1,5 +1,5 @@
 import { io } from 'socket.io-client';
-import logger from './logger.js';
+import logger from '../utils/logger.js';
 
 class BotSocket {
     constructor() {
@@ -12,11 +12,11 @@ class BotSocket {
         this.socket = io(this.url, {
             query: {
                 type: 'bot',
-                auth: this.auth
+                auth: this.auth,
             },
             reconnection: true,
             reconnectionAttempts: Infinity,
-            reconnectionDelay: 1000
+            reconnectionDelay: 1000,
         });
 
         this.socket.on('connect', () => {
@@ -53,4 +53,3 @@ class BotSocket {
 }
 
 export const botSocket = new BotSocket();
-

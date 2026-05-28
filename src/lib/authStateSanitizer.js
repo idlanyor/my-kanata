@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { BufferJSON } from 'baileys';
-import logger from './logger.js';
+import logger from '../utils/logger.js';
 
 const fixFileName = (file) => file?.replace(/\//g, '__')?.replace(/:/g, '-');
 
@@ -125,7 +125,10 @@ export const wrapSignalKeyStoreWithSanitizer = (keys, folder) => {
                     if (cleaned.length !== records.length) {
                         const payload = encodeSenderKeyPayload(cleaned);
                         data[id] = payload;
-                        await fs.writeFile(buildFilePath(type, id), JSON.stringify(payload, BufferJSON.replacer));
+                        await fs.writeFile(
+                            buildFilePath(type, id),
+                            JSON.stringify(payload, BufferJSON.replacer)
+                        );
                         logger.warn(`Pruned corrupt sender-key subrecord(s): ${id}`);
                     }
                 } catch (error) {
@@ -165,6 +168,6 @@ export const wrapSignalKeyStoreWithSanitizer = (keys, folder) => {
             }
 
             return keys.set(data);
-        }
+        },
     };
 };

@@ -1,4 +1,4 @@
-import { listRules, createRule, deleteRule } from '../../lib/cloudflare.js';
+import { listRules, createRule, deleteRule } from '../../services/cloudflare.js';
 import Settings from '../../database/models/Settings.js';
 import { getCachedSettings } from '../../handlers/messageFlow.js';
 
@@ -13,7 +13,7 @@ export default {
         const { settings } = await import('../../config/settings.js');
         const dbOwners = botSettings.owners || [];
         const staticOwners = [settings.ownerNumber, settings.ownerLid];
-        
+
         const isOwner = [...staticOwners, ...dbOwners].includes(m.sender);
         if (!isOwner) return m.reply('Access Denied. Owner only.');
         // --------------------------
@@ -29,25 +29,25 @@ export default {
                 menu += `• *${usedPrefix}cfban <ip> [notes]* - Block an IP address\n`;
                 menu += `• *${usedPrefix}cfwhitelist <ip> [notes]* - Allow an IP address\n`;
                 menu += `• *${usedPrefix}cfunban <ip>* - Remove an IP rule\n\n`;
-                
+
                 menu += `*CONFIG & ZONES:*\n`;
                 menu += `• *${usedPrefix}cfset* - Cloudflare API configuration\n`;
                 menu += `• *${usedPrefix}cfzones* - Manage & sync domains\n`;
                 menu += `• *${usedPrefix}cftest* - Test API connectivity\n\n`;
-                
+
                 menu += `*DNS RECORDS:*\n`;
                 menu += `• *${usedPrefix}listdns <domain>* - List DNS records\n`;
                 menu += `• *${usedPrefix}adddns <domain> <type> <name> <content>* - Add DNS record\n\n`;
-                
+
                 menu += `*© Kanata Bot*`;
                 return m.reply(menu);
             }
 
             if (command === 'cflist') {
                 await m.react('⏳');
-                const mode = args[0] ? args[0].toLowerCase() : null; 
+                const mode = args[0] ? args[0].toLowerCase() : null;
                 const rules = await listRules(mode);
-                
+
                 if (!rules || rules.length === 0) {
                     await m.react('❌');
                     return m.reply('No rules found.');
@@ -61,37 +61,35 @@ export default {
                 });
                 await m.reply(msg);
                 await m.react('✅');
-            } 
-            
-            else if (command === 'cfban') {
+            } else if (command === 'cfban') {
                 const ip = args[0];
                 const notes = args.slice(1).join(' ') || 'Banned via WhatsApp Bot';
                 if (!ip) return m.reply(`Usage: ${usedPrefix}cfban <ip> <notes>`);
 
                 await m.react('⏳');
                 const result = await createRule(ip, 'block', notes);
-                await m.reply(`Successfully BANNED IP: *${result.configuration.value}*\nID: ${result.id}`);
+                await m.reply(
+                    `Successfully BANNED IP: *${result.configuration.value}*\nID: ${result.id}`
+                );
                 await m.react('✅');
-            } 
-            
-            else if (command === 'cfwhitelist') {
+            } else if (command === 'cfwhitelist') {
                 const ip = args[0];
                 const notes = args.slice(1).join(' ') || 'Whitelisted via WhatsApp Bot';
                 if (!ip) return m.reply(`Usage: ${usedPrefix}cfwhitelist <ip> <notes>`);
 
                 await m.react('⏳');
                 const result = await createRule(ip, 'whitelist', notes);
-                await m.reply(`Successfully WHITELISTED IP: *${result.configuration.value}*\nID: ${result.id}`);
+                await m.reply(
+                    `Successfully WHITELISTED IP: *${result.configuration.value}*\nID: ${result.id}`
+                );
                 await m.react('✅');
-            }
-
-            else if (command === 'cfunban') {
+            } else if (command === 'cfunban') {
                 const ip = args[0];
                 if (!ip) return m.reply(`Usage: ${usedPrefix}cfunban <ip>`);
 
                 await m.react('⏳');
                 const result = await deleteRule(ip);
-                
+
                 if (result) {
                     await m.reply(`Successfully removed rule for IP: *${result.ip}*`);
                     await m.react('✅');
@@ -100,12 +98,11 @@ export default {
                     await m.reply(`IP not found in firewall rules.`);
                 }
             }
-
         } catch (error) {
             console.error(error);
             const errMsg = error.response?.data?.errors?.[0]?.message || error.message;
             await m.react('❌');
             await m.reply(`❌ Error: ${errMsg}`);
         }
-    }
+    },
 };

@@ -10,9 +10,9 @@ function wrapText(ctx, text, maxWidth) {
 
     for (let i = 1; i < words.length; i++) {
         const word = words[i];
-        const width = ctx.measureText(currentLine + " " + word).width;
+        const width = ctx.measureText(currentLine + ' ' + word).width;
         if (width < maxWidth) {
-            currentLine += " " + word;
+            currentLine += ' ' + word;
         } else {
             lines.push(currentLine);
             currentLine = word;
@@ -53,30 +53,30 @@ export default {
             let fontSize = 100; // Start big
             let lines = [];
             const padding = 60;
-            const maxWidth = size - (padding * 2);
+            const maxWidth = size - padding * 2;
 
             do {
                 ctx.font = `${fontSize}px sans-serif`;
                 lines = wrapText(ctx, text, maxWidth);
-                
+
                 const lineHeight = fontSize * 1.1;
                 const totalHeight = lines.length * lineHeight;
 
                 if (totalHeight < size - padding) {
-                    break; 
+                    break;
                 }
-                
+
                 fontSize -= 5;
             } while (fontSize > 10);
 
             ctx.font = `${fontSize}px sans-serif`;
             const lineHeight = fontSize * 1.1;
             const totalHeight = lines.length * lineHeight;
-            let startY = (size - totalHeight) / 2 + (lineHeight / 2);
+            let startY = (size - totalHeight) / 2 + lineHeight / 2;
 
             // Draw Text (Left Aligned)
             lines.forEach((line, i) => {
-                ctx.fillText(line, padding, startY + (i * lineHeight));
+                ctx.fillText(line, padding, startY + i * lineHeight);
             });
 
             // 2. Convert to Buffer
@@ -89,17 +89,16 @@ export default {
                 type: StickerTypes.FULL,
                 categories: [],
                 id: 'brat',
-                quality: 70
+                quality: 70,
             });
 
             const stickerBuffer = await sticker.toBuffer();
             await sock.sendMessage(m.chat, { sticker: stickerBuffer }, { quoted: m });
             await m.react('✅');
-
         } catch (error) {
             console.error('Error creating local brat sticker:', error);
             await m.react('❌');
             await m.reply('Failed to create brat sticker locally.');
         }
-    }
+    },
 };

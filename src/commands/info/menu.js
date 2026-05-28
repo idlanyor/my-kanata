@@ -1,5 +1,5 @@
 import { commands } from '../../lib/commands.js';
-import { toFancy } from '../../lib/font.js';
+import { toFancy } from '../../utils/font.js';
 import { settings } from '../../config/settings.js';
 import Settings from '../../database/models/Settings.js';
 
@@ -11,13 +11,14 @@ const categoryOrder = [
     'Tools',
     'Group',
     'Finance',
+    'Blog',
     'Utility',
     'Panel',
     'Cloudflare',
     'Users',
     'General',
     'Info',
-    'Owner'
+    'Owner',
 ];
 
 export default {
@@ -31,11 +32,11 @@ export default {
 
         const uniqueCommands = Array.from(new Set(commands.values()));
         const categories = {};
-        
-        uniqueCommands.forEach(cmd => {
+
+        uniqueCommands.forEach((cmd) => {
             if (disabledList.includes(cmd.name)) return;
             if (cmd.name === 'menu') return;
-            
+
             const cat = cmd.category || 'General';
             if (!categories[cat]) categories[cat] = [];
             categories[cat].push(cmd);
@@ -47,7 +48,11 @@ export default {
             return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
         });
 
-        const date = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+        const date = new Date().toLocaleDateString('id-ID', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+        });
         const time = new Date().toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta' });
 
         const getWeton = () => {
@@ -83,12 +88,12 @@ export default {
 ║        ${toFancy('✦ CATEGORY LIST ✦')}
 ╠═══════════════════════════════════╣\n`;
 
-            sortedCategories.forEach(cat => {
+            sortedCategories.forEach((cat) => {
                 const cmdCount = categories[cat].length;
                 menuText += `║  ▸ ${toFancy(settings.prefix + 'MENU ' + cat.toUpperCase())}\n`;
                 menuText += `║    └ Total: ${cmdCount} commands\n`;
             });
-            
+
             menuText += `╚═══════════════════════════════════╝\n\n`;
             menuText += `${toFancy('━━━━━━━━━━━━━━━━━━━━━━━━━')}\n`;
             menuText += `  ${toFancy('Ketik .menu <category> untuk detail')}
@@ -96,30 +101,37 @@ export default {
 ${toFancy('━━━━━━━━━━━━━━━━━━━━━━━━━')}\n\n`;
             menuText += `✦ ${toFancy('Powered by Kanata API')} ✦`;
 
-            return sock.sendMessage(m.chat, {
-                text: menuText,
-                mentions: [m.sender]
-            }, { quoted: m });
+            return sock.sendMessage(
+                m.chat,
+                {
+                    text: menuText,
+                    mentions: [m.sender],
+                },
+                { quoted: m }
+            );
         }
 
-        const selectedCat = sortedCategories.find(c => c.toLowerCase() === inputCategory);
+        const selectedCat = sortedCategories.find((c) => c.toLowerCase() === inputCategory);
         if (!selectedCat) {
-            return m.reply(`✗ ${toFancy('Category not found')}\n${toFancy('Type .menu to return')}`);
+            return m.reply(
+                `✗ ${toFancy('Category not found')}\n${toFancy('Type .menu to return')}`
+            );
         }
 
         categories[selectedCat].sort((a, b) => a.name.localeCompare(b.name));
-        
+
         let menuText = `
 ╔═══════════════════════════════════════╗
 ║         ${toFancy('✦ ' + selectedCat.toUpperCase() + ' ✦')}
 ╠═══════════════════════════════════════╣\n`;
 
         categories[selectedCat].forEach((cmd, index) => {
-            const aliases = cmd.aliases && cmd.aliases.length > 0 ? ` ${cmd.aliases.join('/')}` : '';
+            const aliases =
+                cmd.aliases && cmd.aliases.length > 0 ? ` ${cmd.aliases.join('/')}` : '';
             const icon = index % 2 === 0 ? '◈' : '◇';
             menuText += `║  ${icon} ${toFancy(settings.prefix + cmd.name)}${aliases ? toFancy(`[${aliases}]`) : ''}\n`;
         });
-        
+
         menuText += `╠═══════════════════════════════════════╣
 ║  ${toFancy('⏤͟͟͞͞Total')} : ${categories[selectedCat].length} commands
 ╚═══════════════════════════════════════╝\n\n`;
@@ -127,8 +139,12 @@ ${toFancy('━━━━━━━━━━━━━━━━━━━━━━━
         menuText += `  ${toFancy('Ketik .menu untuk kembali')}
 ${toFancy('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')}`;
 
-        await sock.sendMessage(m.chat, {
-            text: menuText
-        }, { quoted: m });
-    }
+        await sock.sendMessage(
+            m.chat,
+            {
+                text: menuText,
+            },
+            { quoted: m }
+        );
+    },
 };

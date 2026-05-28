@@ -1,10 +1,13 @@
 import { jidNormalizedUser } from 'baileys';
 import { getGroupSettings } from './messageFlow.js';
-import logger from '../lib/logger.js';
+import logger from '../utils/logger.js';
 
 export const groupParticipantsUpdate = async (sock, { id, participants, action }) => {
     try {
-        logger.debug(`Group Update - ID: ${id}, Action: ${action}, Participants: ${participants.join(', ')}`, 'GROUP-EVENT');
+        logger.debug(
+            `Group Update - ID: ${id}, Action: ${action}, Participants: ${participants.join(', ')}`,
+            'GROUP-EVENT'
+        );
         const groupData = await getGroupSettings(id);
         if (!groupData) {
             logger.warn(`No settings found for group: ${id}`, 'GROUP-EVENT');
@@ -13,7 +16,10 @@ export const groupParticipantsUpdate = async (sock, { id, participants, action }
 
         // Ambil metadata tambahan jika deskripsi dibutuhkan
         let groupDesc = groupData.desc || '';
-        if (!groupDesc && (groupData.welcomeMsg.includes('@desc') || groupData.leaveMsg.includes('@desc'))) {
+        if (
+            !groupDesc &&
+            (groupData.welcomeMsg.includes('@desc') || groupData.leaveMsg.includes('@desc'))
+        ) {
             try {
                 const meta = await sock.groupMetadata(id);
                 groupDesc = meta.desc || '-';
@@ -22,16 +28,20 @@ export const groupParticipantsUpdate = async (sock, { id, participants, action }
             }
         }
 
-        logger.debug(`Group Settings for ${id} - Welcome: ${groupData.welcome}, Left: ${groupData.left}`, 'GROUP-EVENT');
+        logger.debug(
+            `Group Settings for ${id} - Welcome: ${groupData.welcome}, Left: ${groupData.left}`,
+            'GROUP-EVENT'
+        );
 
         for (const participant of participants) {
             // Baileys can send string JID or object with id property
-            const rawJid = typeof participant === 'string' ? participant : (participant.id || participant.jid);
+            const rawJid =
+                typeof participant === 'string' ? participant : participant.id || participant.jid;
             if (!rawJid) continue;
 
             const userJid = jidNormalizedUser(rawJid);
             const userTag = `@${userJid.split('@')[0]}`;
-            
+
             if (action === 'add' && groupData.welcome) {
                 const message = groupData.welcomeMsg
                     .replace(/@user/g, userTag)
@@ -40,7 +50,7 @@ export const groupParticipantsUpdate = async (sock, { id, participants, action }
 
                 await sock.sendMessage(id, {
                     text: message,
-                    mentions: [userJid]
+                    mentions: [userJid],
                 });
             } else if (action === 'remove' && groupData.left) {
                 const message = groupData.leaveMsg
@@ -50,7 +60,7 @@ export const groupParticipantsUpdate = async (sock, { id, participants, action }
 
                 await sock.sendMessage(id, {
                     text: message,
-                    mentions: [userJid]
+                    mentions: [userJid],
                 });
             }
         }

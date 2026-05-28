@@ -11,7 +11,9 @@ export default {
         try {
             const prompt = (text || args?.join(' ') || '').trim();
             if (!prompt) {
-                return m.reply(`Reply gambar/sticker dengan prompt.\nContoh: *${settings.prefix}imgedit ubah jadi gaya anime*`);
+                return m.reply(
+                    `Reply gambar/sticker dengan prompt.\nContoh: *${settings.prefix}imgedit ubah jadi gaya anime*`
+                );
             }
 
             const quoted = m.quoted ? m.quoted : m;
@@ -19,7 +21,9 @@ export default {
             const mime = msg.mimetype || '';
 
             if (!/^image\//i.test(mime) && !/sticker/i.test(mime)) {
-                return m.reply(`Reply gambar/sticker dengan prompt.\nContoh: *${settings.prefix}imgedit ubah jadi gaya anime*`);
+                return m.reply(
+                    `Reply gambar/sticker dengan prompt.\nContoh: *${settings.prefix}imgedit ubah jadi gaya anime*`
+                );
             }
 
             await m.react('⏳');
@@ -34,16 +38,16 @@ export default {
             const { url: imageUrl } = await uploadBufferToKanata(mediaBuffer, {
                 filename,
                 mimeType: mime || 'image/jpeg',
-                timeout: 60000
+                timeout: 60000,
             });
 
             await m.react('⚙️');
             const editRes = await axios.get('https://chocomilk.amira.us.kg/v1/i2i/nano-banana', {
                 params: {
                     prompt,
-                    image: imageUrl
+                    image: imageUrl,
                 },
-                timeout: 120000
+                timeout: 120000,
             });
 
             const taskId = editRes.data?.data?.taskId;
@@ -55,7 +59,7 @@ export default {
                 '*Image Edit Requested*',
                 '',
                 `Prompt: ${prompt}`,
-                `Task ID: ${taskId}`
+                `Task ID: ${taskId}`,
             ].join('\n');
 
             await m.react('✅');
@@ -65,5 +69,5 @@ export default {
             await m.react('❌');
             return m.reply(`Gagal image edit: ${error.message || 'Unknown error'}`);
         }
-    }
+    },
 };

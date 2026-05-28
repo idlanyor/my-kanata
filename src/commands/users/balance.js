@@ -8,7 +8,7 @@ export default {
     execute: async (sock, m, args, text) => {
         const user = await User.findOne({ jid: m.sender });
         const balance = user ? user.balance : 0;
-        
+
         await m.reply(`Your current balance is: Rp ${balance.toLocaleString()}`);
-    }
+    },
 };

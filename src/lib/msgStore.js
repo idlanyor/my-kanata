@@ -6,7 +6,7 @@ export const saveMessage = (m) => {
         body: m.body,
         sender: m.sender,
         chat: m.chat,
-        timestamp: Date.now()
+        timestamp: Date.now(),
     });
 
     setTimeout(() => {

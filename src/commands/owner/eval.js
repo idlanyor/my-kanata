@@ -48,7 +48,11 @@ const transformShortcut = (input) => {
     if (!manager) {
         if (fs.existsSync(path.join(projectRoot, 'pnpm-lock.yaml'))) return `pnpm add ${pkgSpec}`;
         if (fs.existsSync(path.join(projectRoot, 'yarn.lock'))) return `yarn add ${pkgSpec}`;
-        if (fs.existsSync(path.join(projectRoot, 'bun.lockb')) || fs.existsSync(path.join(projectRoot, 'bun.lock'))) return `bun add ${pkgSpec}`;
+        if (
+            fs.existsSync(path.join(projectRoot, 'bun.lockb')) ||
+            fs.existsSync(path.join(projectRoot, 'bun.lock'))
+        )
+            return `bun add ${pkgSpec}`;
         return `npm install ${pkgSpec}`;
     }
 
@@ -64,7 +68,7 @@ const withNvmBootstrap = (command) => {
         '[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"',
         '[ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"',
         'command -v nvm >/dev/null 2>&1 && nvm use --silent >/dev/null 2>&1 || true',
-        command
+        command,
     ];
     return parts.join(' ; ');
 };
@@ -74,11 +78,15 @@ const replyUncut = async (sock, m, text, fileName) => {
     try {
         return await m.reply(payload || 'Done.');
     } catch {
-        return sock.sendMessage(m.chat, {
-            document: Buffer.from(payload || 'Done.', 'utf-8'),
-            mimetype: 'text/plain',
-            fileName
-        }, { quoted: m });
+        return sock.sendMessage(
+            m.chat,
+            {
+                document: Buffer.from(payload || 'Done.', 'utf-8'),
+                mimetype: 'text/plain',
+                fileName,
+            },
+            { quoted: m }
+        );
     }
 };
 
@@ -90,7 +98,10 @@ export default {
     execute: async (sock, m, args, text) => {
         // Strict Owner Check
         const sender = m.sender;
-        const isOwner = sender === settings.ownerNumber || sender === settings.ownerLid || sender.split(':')[0] === settings.ownerNumber.split('@')[0];
+        const isOwner =
+            sender === settings.ownerNumber ||
+            sender === settings.ownerLid ||
+            sender.split(':')[0] === settings.ownerNumber.split('@')[0];
         if (!isOwner) return; // Silent return for unauthorized users
 
         const command = m.body.slice(settings.prefix.length).trim().split(' ')[0].toLowerCase();
@@ -103,7 +114,7 @@ export default {
                 shell: '/bin/bash',
                 env: { ...process.env, PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin' },
                 timeout: 10 * 60 * 1000,
-                maxBuffer: 10 * 1024 * 1024
+                maxBuffer: 10 * 1024 * 1024,
             };
 
             exec(shellCommand, options, (err, stdout, stderr) => {
@@ -117,17 +128,20 @@ export default {
 
                 return replyUncut(sock, m, output, 'exec-output.txt');
             });
-        } 
-        
-        else if (command === 'eval' || command === '>') {
+        } else if (command === 'eval' || command === '>') {
             if (!text) return m.reply('Provide JS code.');
             try {
                 let evaled = await eval(text);
-                if (typeof evaled !== 'string') evaled = util.inspect(evaled, { depth: null, maxArrayLength: null, maxStringLength: null });
+                if (typeof evaled !== 'string')
+                    evaled = util.inspect(evaled, {
+                        depth: null,
+                        maxArrayLength: null,
+                        maxStringLength: null,
+                    });
                 await replyUncut(sock, m, evaled, 'eval-output.txt');
             } catch (err) {
                 await replyUncut(sock, m, err, 'eval-error.txt');
             }
         }
-    }
+    },
 };

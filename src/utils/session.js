@@ -9,7 +9,7 @@ class SessionManager {
             id,
             step: 0,
             data,
-            lastActivity: Date.now()
+            lastActivity: Date.now(),
         };
         this.sessions.set(id, session);
         return session;

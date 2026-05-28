@@ -12,5 +12,5 @@ export default {
         } else {
             await m.reply(' Chat ini belum memiliki memori percakapan.');
         }
-    }
+    },
 };

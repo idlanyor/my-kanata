@@ -9,7 +9,9 @@ export default {
     execute: async (sock, m, args, text) => {
         if (!args[0]) {
             const current = await Settings.findOne({ id: 'bot_settings' });
-            return m.reply(`Format: .mode <public/self/group>\n\n*Status Saat Ini:* ${current?.mode?.toUpperCase() || 'PUBLIC'}`);
+            return m.reply(
+                `Format: .mode <public/self/group>\n\n*Status Saat Ini:* ${current?.mode?.toUpperCase() || 'PUBLIC'}`
+            );
         }
 
         const newMode = args[0].toLowerCase();
@@ -25,13 +27,13 @@ export default {
                 { mode: newMode },
                 { upsert: true }
             );
-            
+
             clearSettingsCache();
-            
+
             m.reply(` Berhasil mengubah mode bot menjadi: *${newMode.toUpperCase()}*`);
         } catch (err) {
             console.error(err);
             m.reply('Gagal mengubah mode bot.');
         }
-    }
+    },
 };

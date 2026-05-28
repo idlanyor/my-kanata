@@ -1,4 +1,4 @@
-import { deleteRule } from '../../lib/cloudflare.js';
+import { deleteRule } from '../../services/cloudflare.js';
 import { settings } from '../../config/settings.js';
 
 export default {
@@ -7,7 +7,10 @@ export default {
     category: 'Cloudflare',
     execute: async (sock, m, args) => {
         const sender = m.sender;
-        const isOwner = sender === settings.ownerNumber || sender === settings.ownerLid || sender.split(':')[0] === settings.ownerNumber.split('@')[0];
+        const isOwner =
+            sender === settings.ownerNumber ||
+            sender === settings.ownerLid ||
+            sender.split(':')[0] === settings.ownerNumber.split('@')[0];
         if (!isOwner) return m.reply('Access Denied. Owner only.');
 
         const ip = args[0];
@@ -24,5 +27,5 @@ export default {
         } catch (error) {
             await m.reply(`Error: ${error.message}`);
         }
-    }
+    },
 };

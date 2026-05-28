@@ -1,5 +1,5 @@
-import { getZoneId, addDnsRecord } from '../../lib/cloudflare.js';
-import { sessionManager } from '../../lib/session.js';
+import { getZoneId, addDnsRecord } from '../../services/cloudflare.js';
+import { sessionManager } from '../../utils/session.js';
 import Settings from '../../database/models/Settings.js';
 import { getCachedSettings } from '../../handlers/messageFlow.js';
 
@@ -25,20 +25,24 @@ export default {
                 case 0: // Input Type
                     const type = body.toUpperCase();
                     if (!['A', 'AAAA', 'CNAME', 'TXT', 'MX', 'SRV', 'NS'].includes(type)) {
-                        return m.reply('❌ Tipe tidak valid. Masukkan tipe (A, CNAME, TXT, dll) atau ketik *batal*:');
+                        return m.reply(
+                            '❌ Tipe tidak valid. Masukkan tipe (A, CNAME, TXT, dll) atau ketik *batal*:'
+                        );
                     }
                     session.data.type = type;
                     session.step++;
-                    await m.reply(`✅ Tipe: *${type}*\n\n2. Masukkan *Nama* (subdomain, misal: panel) atau ketik *@* untuk root:`);
+                    await m.reply(
+                        `✅ Tipe: *${type}*\n\n2. Masukkan *Nama* (subdomain, misal: panel) atau ketik *@* untuk root:`
+                    );
                     break;
 
                 case 1: // Input Name
                     session.data.name = body;
                     session.step++;
-                    
+
                     const botSettings = await getCachedSettings();
                     const zones = botSettings.cfZones || [];
-                    
+
                     if (zones.length > 0) {
                         let msg = `✅ Nama: *${body}*\n\n3. Pilih *Domain* (Ketik angkanya):\n`;
                         zones.forEach((z, i) => {
@@ -48,7 +52,9 @@ export default {
                         session.data.zoneList = zones;
                         await m.reply(msg);
                     } else {
-                        await m.reply(`✅ Nama: *${body}*\n\n3. Masukkan *Domain* tujuan (misal: kanata.web.id):`);
+                        await m.reply(
+                            `✅ Nama: *${body}*\n\n3. Masukkan *Domain* tujuan (misal: kanata.web.id):`
+                        );
                     }
                     break;
 
@@ -64,22 +70,28 @@ export default {
 
                     await m.react('⏳');
                     const zoneId = await getZoneId(domain);
-                    
+
                     if (!zoneId) {
                         await m.react('❌');
-                        return m.reply(`❌ Domain *${domain}* tidak ditemukan di akun Cloudflare Anda. Masukkan domain lain atau ketik *batal*:`);
+                        return m.reply(
+                            `❌ Domain *${domain}* tidak ditemukan di akun Cloudflare Anda. Masukkan domain lain atau ketik *batal*:`
+                        );
                     }
 
                     session.data.domain = domain;
                     session.data.zoneId = zoneId;
                     session.step++;
-                    await m.reply(`✅ Domain: *${domain}*\n\n4. Masukkan *Konten/Isi* (IP Address untuk A record, atau Target untuk CNAME):`);
+                    await m.reply(
+                        `✅ Domain: *${domain}*\n\n4. Masukkan *Konten/Isi* (IP Address untuk A record, atau Target untuk CNAME):`
+                    );
                     break;
 
                 case 3: // Input Content
                     session.data.content = body;
                     session.step++;
-                    await m.reply(`✅ Konten: *${body}*\n\n5. Gunakan *Proxy Cloudflare*? (ya/tidak):`);
+                    await m.reply(
+                        `✅ Konten: *${body}*\n\n5. Gunakan *Proxy Cloudflare*? (ya/tidak):`
+                    );
                     break;
 
                 case 4: // Input Proxy & Show Summary
@@ -102,15 +114,15 @@ export default {
                         await m.react('⏳');
                         const { zoneId, type, name, domain, content, proxied } = session.data;
                         const fullName = name === '@' ? domain : `${name}.${domain}`;
-                        
+
                         const result = await addDnsRecord(zoneId, type, fullName, content, proxied);
-                        
+
                         let successMsg = `✅ *DNS Record Berhasil Dibuat!*\n\n`;
                         successMsg += `➛ *Full Name:* ${result.name}\n`;
                         successMsg += `➛ *Type:* ${result.type}\n`;
                         successMsg += `➛ *Content:* ${result.content}\n`;
                         successMsg += `➛ *ID:* \`${result.id}\``;
-                        
+
                         await m.reply(successMsg);
                         await m.react('✅');
                         sessionManager.delete(m.sender);
@@ -136,11 +148,11 @@ export default {
         const botSettings = await getCachedSettings();
         const dbOwners = botSettings.owners || [];
         const staticOwners = [settings.ownerNumber, settings.ownerLid];
-        
+
         const isOwner = [...staticOwners, ...dbOwners].includes(m.sender);
         if (!isOwner) return m.reply('❌ Akses Ditolak. Perintah ini hanya untuk Owner.');
         // --------------------------
-        
+
         // Jika ada argumen lengkap, jalankan mode instan (legacy)
         if (args.length >= 4) {
             const type = args[0].toUpperCase();
@@ -156,11 +168,13 @@ export default {
                     await m.react('❌');
                     return m.reply(`❌ Domain ${domain} tidak ditemukan.`);
                 }
-                
+
                 const fullName = name === '@' ? domain : `${name}.${domain}`;
                 const result = await addDnsRecord(zoneId, type, fullName, content, proxied);
                 await m.react('✅');
-                return m.reply(`✅ Berhasil dibuat: ${result.name} (${result.type}) -> ${result.content}`);
+                return m.reply(
+                    `✅ Berhasil dibuat: ${result.name} (${result.type}) -> ${result.content}`
+                );
             } catch (e) {
                 await m.react('❌');
                 return m.reply(`❌ Gagal: ${e.message}`);
@@ -168,11 +182,17 @@ export default {
         }
 
         // Jika tidak ada argumen, mulai mode interaktif
-        sessionManager.create(m.sender, { 
+        sessionManager.create(m.sender, {
             commandName: 'adddns',
-            type: '', name: '', domain: '', content: '', proxied: false 
+            type: '',
+            name: '',
+            domain: '',
+            content: '',
+            proxied: false,
         });
 
-        await m.reply(`*── 「 DNS CREATOR 」 ──*\n\nSelamat datang di asisten pembuatan DNS.\n\n1. Masukkan *Tipe* record (misal: A, CNAME, TXT):\n\n_Ketik *batal* kapan saja untuk menghentikan._`);
-    }
+        await m.reply(
+            `*── 「 DNS CREATOR 」 ──*\n\nSelamat datang di asisten pembuatan DNS.\n\n1. Masukkan *Tipe* record (misal: A, CNAME, TXT):\n\n_Ketik *batal* kapan saja untuk menghentikan._`
+        );
+    },
 };

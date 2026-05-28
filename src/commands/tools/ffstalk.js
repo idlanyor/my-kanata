@@ -136,16 +136,31 @@ export default {
             }
 
             const data = result.data && typeof result.data === 'object' ? result.data : result;
-            const basicInfo = data?.basicinfo && typeof data.basicinfo === 'object' ? data.basicinfo : {};
-            const socialInfo = data?.socialinfo && typeof data.socialinfo === 'object' ? data.socialinfo : {};
-            const clanInfo = data?.clanbasicinfo && typeof data.clanbasicinfo === 'object' ? data.clanbasicinfo : {};
+            const basicInfo =
+                data?.basicinfo && typeof data.basicinfo === 'object' ? data.basicinfo : {};
+            const socialInfo =
+                data?.socialinfo && typeof data.socialinfo === 'object' ? data.socialinfo : {};
+            const clanInfo =
+                data?.clanbasicinfo && typeof data.clanbasicinfo === 'object'
+                    ? data.clanbasicinfo
+                    : {};
 
-            const nickname = pick(data, ['nickname', 'name', 'playerName', 'username']) || pick(basicInfo, ['nickname', 'name']);
-            const level = pick(data, ['level', 'lvl', 'accountLevel']) || pick(basicInfo, ['level']);
-            const likes = pick(data, ['likes', 'like', 'liked']) || pick(basicInfo, ['liked']) || pick(socialInfo, ['likes', 'liked']);
-            const playerRegion = pick(data, ['region', 'server']) || pick(basicInfo, ['region']) || region;
-            const guild = pick(data, ['guildName', 'guild', 'clanName']) || pick(clanInfo, ['clanname', 'name']);
-            const uidField = pick(data, ['uid', 'playerId', 'id']) || pick(basicInfo, ['accountid']) || uid;
+            const nickname =
+                pick(data, ['nickname', 'name', 'playerName', 'username']) ||
+                pick(basicInfo, ['nickname', 'name']);
+            const level =
+                pick(data, ['level', 'lvl', 'accountLevel']) || pick(basicInfo, ['level']);
+            const likes =
+                pick(data, ['likes', 'like', 'liked']) ||
+                pick(basicInfo, ['liked']) ||
+                pick(socialInfo, ['likes', 'liked']);
+            const playerRegion =
+                pick(data, ['region', 'server']) || pick(basicInfo, ['region']) || region;
+            const guild =
+                pick(data, ['guildName', 'guild', 'clanName']) ||
+                pick(clanInfo, ['clanname', 'name']);
+            const uidField =
+                pick(data, ['uid', 'playerId', 'id']) || pick(basicInfo, ['accountid']) || uid;
 
             let msg = '*FREE FIRE STALK*\n\n';
             msg += `UID: ${formatValue(uidField)}\n`;
@@ -170,5 +185,5 @@ export default {
             await m.react('❌');
             return m.reply(`Gagal cek Free Fire: ${error.message || 'Unknown error'}`);
         }
-    }
+    },
 };

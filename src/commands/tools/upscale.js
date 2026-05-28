@@ -29,13 +29,13 @@ export default {
             const { url: imageUrl } = await uploadBufferToKanata(mediaBuffer, {
                 filename,
                 mimeType: mime || 'image/jpeg',
-                timeout: 60000
+                timeout: 60000,
             });
 
             await m.react('⚙️');
             const upscaleRes = await axios.get('https://chocomilk.amira.us.kg/v1/i2i/upscale', {
                 params: { image: imageUrl },
-                timeout: 120000
+                timeout: 120000,
             });
 
             const upscaledImageUrl = upscaleRes.data?.data?.image;
@@ -43,15 +43,19 @@ export default {
                 throw new Error(upscaleRes.data?.error || 'Response upscale tidak valid.');
             }
 
-            await sock.sendMessage(m.chat, {
-                image: { url: upscaledImageUrl },
-                caption: '*Upscale berhasil*'
-            }, { quoted: m });
+            await sock.sendMessage(
+                m.chat,
+                {
+                    image: { url: upscaledImageUrl },
+                    caption: '*Upscale berhasil*',
+                },
+                { quoted: m }
+            );
             await m.react('✅');
         } catch (error) {
             console.error('[upscale] error:', error);
             await m.react('❌');
             return m.reply(`Gagal upscale gambar: ${error.message || 'Unknown error'}`);
         }
-    }
+    },
 };

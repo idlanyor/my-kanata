@@ -10,10 +10,12 @@ const buildRelayOptions = (messageId, options = {}) => {
 };
 
 const unwrapMessage = (message) => {
-    return message?.viewOnceMessage?.message
-        || message?.viewOnceMessageV2?.message
-        || message?.viewOnceMessageV2Extension?.message
-        || message;
+    return (
+        message?.viewOnceMessage?.message ||
+        message?.viewOnceMessageV2?.message ||
+        message?.viewOnceMessageV2Extension?.message ||
+        message
+    );
 };
 
 const isGroupJid = (jid) => jid?.endsWith('@g.us');
@@ -29,7 +31,8 @@ const buildAdditionalNodes = (jid, message) => {
             additionalNodes.push({
                 tag: 'biz',
                 attrs: {
-                    native_flow_name: firstButtonName === 'review_and_pay' ? 'order_details' : firstButtonName,
+                    native_flow_name:
+                        firstButtonName === 'review_and_pay' ? 'order_details' : firstButtonName,
                 },
             });
         } else if (firstButtonName === 'single_select') {
@@ -89,26 +92,35 @@ const buildAdditionalNodes = (jid, message) => {
 
 const buildHeaderMedia = async (sock, payload = {}) => {
     if (payload.image) {
-        return await prepareWAMessageMedia({
-            image: payload.image,
-            jpegThumbnail: payload.jpegThumbnail,
-        }, { upload: sock.waUploadToServer });
+        return await prepareWAMessageMedia(
+            {
+                image: payload.image,
+                jpegThumbnail: payload.jpegThumbnail,
+            },
+            { upload: sock.waUploadToServer }
+        );
     }
 
     if (payload.video) {
-        return await prepareWAMessageMedia({
-            video: payload.video,
-            jpegThumbnail: payload.jpegThumbnail,
-        }, { upload: sock.waUploadToServer });
+        return await prepareWAMessageMedia(
+            {
+                video: payload.video,
+                jpegThumbnail: payload.jpegThumbnail,
+            },
+            { upload: sock.waUploadToServer }
+        );
     }
 
     if (payload.document) {
-        return await prepareWAMessageMedia({
-            document: payload.document,
-            mimetype: payload.mimetype,
-            fileName: payload.fileName,
-            jpegThumbnail: payload.jpegThumbnail,
-        }, { upload: sock.waUploadToServer });
+        return await prepareWAMessageMedia(
+            {
+                document: payload.document,
+                mimetype: payload.mimetype,
+                fileName: payload.fileName,
+                jpegThumbnail: payload.jpegThumbnail,
+            },
+            { upload: sock.waUploadToServer }
+        );
     }
 
     return null;
@@ -162,13 +174,15 @@ const buildInteractiveListMessage = async (sock, payload = {}) => {
         media: !!headerMedia,
         mentions: payload.mentions,
         viewOnce: true,
-        ...(headerMedia ? {
-            ...(headerMedia.imageMessage ? { image: payload.image } : {}),
-            ...(headerMedia.videoMessage ? { video: payload.video } : {}),
-            ...(headerMedia.documentMessage ? { document: payload.document } : {}),
-            ...(payload.caption ? { caption: payload.caption } : {}),
-            __preparedMedia: headerMedia,
-        } : {}),
+        ...(headerMedia
+            ? {
+                  ...(headerMedia.imageMessage ? { image: payload.image } : {}),
+                  ...(headerMedia.videoMessage ? { video: payload.video } : {}),
+                  ...(headerMedia.documentMessage ? { document: payload.document } : {}),
+                  ...(payload.caption ? { caption: payload.caption } : {}),
+                  __preparedMedia: headerMedia,
+              }
+            : {}),
     };
 };
 
@@ -178,14 +192,17 @@ const buildWileysStyleContent = async (sock, payload = {}) => {
         if (payload.__preparedMedia) {
             mediaMessage = payload.__preparedMedia;
         } else if (payload.image || payload.video || payload.document) {
-            mediaMessage = await prepareWAMessageMedia({
-                ...(payload.image ? { image: payload.image } : {}),
-                ...(payload.video ? { video: payload.video } : {}),
-                ...(payload.document ? { document: payload.document } : {}),
-                ...(payload.jpegThumbnail ? { jpegThumbnail: payload.jpegThumbnail } : {}),
-                ...(payload.mimetype ? { mimetype: payload.mimetype } : {}),
-                ...(payload.fileName ? { fileName: payload.fileName } : {}),
-            }, { upload: sock.waUploadToServer });
+            mediaMessage = await prepareWAMessageMedia(
+                {
+                    ...(payload.image ? { image: payload.image } : {}),
+                    ...(payload.video ? { video: payload.video } : {}),
+                    ...(payload.document ? { document: payload.document } : {}),
+                    ...(payload.jpegThumbnail ? { jpegThumbnail: payload.jpegThumbnail } : {}),
+                    ...(payload.mimetype ? { mimetype: payload.mimetype } : {}),
+                    ...(payload.fileName ? { fileName: payload.fileName } : {}),
+                },
+                { upload: sock.waUploadToServer }
+            );
         }
 
         const interactiveMessage = {
@@ -269,9 +286,10 @@ const buildWileysStyleContent = async (sock, payload = {}) => {
 };
 
 const relayContent = async (sock, jid, content, options = {}) => {
-    const normalizedContent = content?.interactiveButtons || content?.sections
-        ? await buildWileysStyleContent(sock, content)
-        : content;
+    const normalizedContent =
+        content?.interactiveButtons || content?.sections
+            ? await buildWileysStyleContent(sock, content)
+            : content;
 
     const msg = generateWAMessageFromContent(jid, normalizedContent, {
         quoted: options.quoted,
@@ -296,7 +314,7 @@ export const attachListMessageCompat = (sock) => {
         return sock;
     }
 
-        const originalSendMessage = sock.sendMessage.bind(sock);
+    const originalSendMessage = sock.sendMessage.bind(sock);
 
     sock.sendListMessage = async (jid, payload, options = {}) => {
         return relayContent(sock, jid, buildLegacyListPayload(payload), options);
@@ -307,14 +325,22 @@ export const attachListMessageCompat = (sock) => {
     };
 
     sock.sendInteractiveButtons = async (jid, payload, options = {}) => {
-        if (!Array.isArray(payload?.interactiveButtons) || payload.interactiveButtons.length === 0) {
+        if (
+            !Array.isArray(payload?.interactiveButtons) ||
+            payload.interactiveButtons.length === 0
+        ) {
             throw new Error('interactiveButtons must be a non-empty array');
         }
 
-        return relayContent(sock, jid, {
-            ...payload,
-            viewOnce: payload.viewOnce ?? true,
-        }, options);
+        return relayContent(
+            sock,
+            jid,
+            {
+                ...payload,
+                viewOnce: payload.viewOnce ?? true,
+            },
+            options
+        );
     };
 
     sock.sendMessage = async (jid, content, options = {}) => {
@@ -327,7 +353,10 @@ export const attachListMessageCompat = (sock) => {
                 return sock.sendInteractiveList(jid, content.interactiveList, options);
             }
 
-            if (Array.isArray(content.interactiveButtons) && content.interactiveButtons.length > 0) {
+            if (
+                Array.isArray(content.interactiveButtons) &&
+                content.interactiveButtons.length > 0
+            ) {
                 return sock.sendInteractiveButtons(jid, content, options);
             }
         }

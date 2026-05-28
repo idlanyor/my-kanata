@@ -24,7 +24,8 @@ export default {
             }
 
             const bestVideo = data.medias[0];
-            const caption = ` *TWITTER/X DOWNLOADER*\n\n` +
+            const caption =
+                ` *TWITTER/X DOWNLOADER*\n\n` +
                 `  ◦  *Title* : ${data.title || 'Twitter Video'}\n` +
                 `  ◦  *Quality* : ${bestVideo.quality || 'unknown'}\n\n` +
                 `Powered by getxbot`;
@@ -33,7 +34,7 @@ export default {
                 m.chat,
                 {
                     video: { url: bestVideo.url },
-                    caption
+                    caption,
                 },
                 { quoted: m }
             );
@@ -43,5 +44,5 @@ export default {
             await m.react('❌');
             await m.reply('An error occurred while fetching Twitter/X video.');
         }
-    }
+    },
 };

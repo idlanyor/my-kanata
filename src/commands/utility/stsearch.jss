@@ -29,11 +29,10 @@ export default {
             msg += `Use ${settings.prefix}stget <URL> to get the pack.`;
             await m.reply(msg);
             await m.react('✅');
-
         } catch (error) {
             console.error('STSearch Error:', error);
             await m.react('❌');
             await m.reply(`Error: ${error.message}`);
         }
-    }
+    },
 };

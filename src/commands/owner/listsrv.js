@@ -11,7 +11,9 @@ export default {
         try {
             const servers = await Server.find({});
             if (servers.length === 0) {
-                return m.reply(`Belum ada data server di database bot. Gunakan ${settings.prefix}setexpired sync untuk sinkronisasi.`);
+                return m.reply(
+                    `Belum ada data server di database bot. Gunakan ${settings.prefix}setexpired sync untuk sinkronisasi.`
+                );
             }
 
             // Ambil semua user untuk mapping nama owner
@@ -30,14 +32,17 @@ export default {
                 msg += `--------------------------\n`;
             });
 
-            await sock.sendMessage(m.chat, { 
-                text: msg, 
-                mentions: servers.map(s => s.userId) 
-            }, { quoted: m });
-
+            await sock.sendMessage(
+                m.chat,
+                {
+                    text: msg,
+                    mentions: servers.map((s) => s.userId),
+                },
+                { quoted: m }
+            );
         } catch (error) {
             console.error(error);
             await m.reply(`Error: ${error.message}`);
         }
-    }
+    },
 };

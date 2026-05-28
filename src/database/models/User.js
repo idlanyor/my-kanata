@@ -4,37 +4,37 @@ const userSchema = new mongoose.Schema({
     jid: {
         type: String,
         required: true,
-        unique: true
+        unique: true,
     },
     phoneNumber: {
         type: String,
-        default: ''
+        default: '',
     },
     name: {
         type: String,
-        default: ''
+        default: '',
     },
     role: {
         type: String,
         default: 'user',
-        enum: ['user', 'admin']
+        enum: ['user', 'admin'],
     },
     balance: {
         type: Number,
-        default: 0
+        default: 0,
     },
     emailCloud: {
         type: String,
-        default: ''
+        default: '',
     },
     webPassword: {
         type: String,
-        default: null
+        default: null,
     },
     createdAt: {
         type: Date,
-        default: Date.now
-    }
+        default: Date.now,
+    },
 });
 
 const User = mongoose.model('User', userSchema);

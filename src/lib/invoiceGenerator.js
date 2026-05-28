@@ -8,9 +8,9 @@ import { post } from './api.js';
  */
 export const generateInvoice = async (invoiceData, apiKey = null) => {
     const payload = { ...invoiceData };
-    
+
     const headers = {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
     };
 
     if (apiKey) {
@@ -20,7 +20,7 @@ export const generateInvoice = async (invoiceData, apiKey = null) => {
     try {
         const pdfBuffer = await post('https://invoice-generator.com', payload, {
             responseType: 'arraybuffer',
-            headers: headers
+            headers: headers,
         });
 
         return pdfBuffer;

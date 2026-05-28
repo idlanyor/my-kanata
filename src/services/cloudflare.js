@@ -5,8 +5,8 @@ const getHeaders = async () => {
     const settings = await getCachedSettings();
     const token = settings.cfToken || process.env.CLOUDFLARE_API_TOKEN;
     return {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
     };
 };
 
@@ -23,7 +23,7 @@ export const listRules = async (mode = null, page = 1) => {
 
         const params = {
             page: page,
-            per_page: 50
+            per_page: 50,
         };
         if (mode) params.mode = mode;
 
@@ -45,9 +45,9 @@ export const createRule = async (ip, mode, notes) => {
             mode: mode, // 'block', 'whitelist', 'challenge', 'js_challenge'
             configuration: {
                 target: 'ip',
-                value: ip
+                value: ip,
             },
-            notes: notes || `Created via Bot by Owner`
+            notes: notes || `Created via Bot by Owner`,
         };
 
         const response = await axios.post(CF_API_URL, data, { headers });
@@ -68,8 +68,8 @@ export const deleteRule = async (ip) => {
         const searchResponse = await axios.get(CF_API_URL, {
             headers,
             params: {
-                'configuration.value': ip
-            }
+                'configuration.value': ip,
+            },
         });
 
         const rules = searchResponse.data.result;
@@ -91,10 +91,10 @@ export const deleteRule = async (ip) => {
 export const getZoneId = async (domainName) => {
     try {
         const settings = await getCachedSettings();
-        
+
         // 1. Check in database first
         if (settings.cfZones && settings.cfZones.length > 0) {
-            const found = settings.cfZones.find(z => z.domain === domainName?.toLowerCase());
+            const found = settings.cfZones.find((z) => z.domain === domainName?.toLowerCase());
             if (found) return found.zoneId;
         }
 
@@ -102,7 +102,7 @@ export const getZoneId = async (domainName) => {
         const headers = await getHeaders();
         const response = await axios.get('https://api.cloudflare.com/client/v4/zones', {
             headers,
-            params: { name: domainName }
+            params: { name: domainName },
         });
         const zones = response.data.result;
         return zones.length > 0 ? zones[0].id : null;
@@ -121,7 +121,7 @@ export const addDnsRecord = async (zoneId, type, name, content, proxied = false)
             name: name,
             content: content,
             ttl: 1, // Automatic
-            proxied: proxied
+            proxied: proxied,
         };
 
         const response = await axios.post(url, data, { headers });
@@ -138,7 +138,7 @@ export const listDnsRecords = async (zoneId, page = 1) => {
         const url = `https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`;
         const response = await axios.get(url, {
             headers,
-            params: { page, per_page: 50 }
+            params: { page, per_page: 50 },
         });
         return response.data.result;
     } catch (error) {
@@ -153,11 +153,11 @@ export const fetchAllZones = async (page = 1) => {
         const accountId = await getAccountId();
         const response = await axios.get('https://api.cloudflare.com/client/v4/zones', {
             headers,
-            params: { 
+            params: {
                 'account.id': accountId,
-                page: page, 
-                per_page: 50 
-            }
+                page: page,
+                per_page: 50,
+            },
         });
         return response.data.result;
     } catch (error) {

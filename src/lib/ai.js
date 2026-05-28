@@ -1,8 +1,4 @@
-import {
-  GoogleGenAI,
-  createUserContent,
-  createPartFromUri,
-} from "@google/genai";
+import { GoogleGenAI, createUserContent, createPartFromUri } from '@google/genai';
 
 // Store chat history in memory with TTL and metadata
 const chatHistories = new Map();
@@ -28,7 +24,7 @@ export const clearChatHistory = (chatId) => {
 export const cleanupChatHistories = () => {
     const now = Date.now();
     let cleaned = 0;
-    
+
     // Remove expired chats
     for (const [chatId, data] of chatHistories.entries()) {
         if (now - data.timestamp > CHAT_HISTORY_TTL_MS) {
@@ -36,7 +32,7 @@ export const cleanupChatHistories = () => {
             cleaned++;
         }
     }
-    
+
     // If still too many chats, remove oldest ones
     if (chatHistories.size > MAX_TOTAL_CHATS) {
         const sorted = [...chatHistories.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp);
@@ -46,7 +42,7 @@ export const cleanupChatHistories = () => {
             cleaned++;
         }
     }
-    
+
     return cleaned;
 };
 
@@ -56,13 +52,13 @@ export const cleanupChatHistories = () => {
 const getChatHistory = (chatId) => {
     const now = Date.now();
     const existing = chatHistories.get(chatId);
-    
+
     // Check if expired
     if (existing && now - existing.timestamp > CHAT_HISTORY_TTL_MS) {
         chatHistories.delete(chatId);
         return null;
     }
-    
+
     return existing;
 };
 
@@ -74,10 +70,10 @@ const setChatHistory = (chatId, history) => {
     if (chatHistories.size >= MAX_TOTAL_CHATS) {
         cleanupChatHistories();
     }
-    
+
     chatHistories.set(chatId, {
         history,
-        timestamp: Date.now()
+        timestamp: Date.now(),
     });
 };
 
@@ -87,7 +83,7 @@ const setChatHistory = (chatId, history) => {
 export const uploadFileToGemini = async (filePath, mimeType) => {
     try {
         const ai = new GoogleGenAI({
-            apiKey: process.env.GEMINI_API_KEY
+            apiKey: process.env.GEMINI_API_KEY,
         });
         const myfile = await ai.files.upload({
             file: filePath,
@@ -102,13 +98,19 @@ export const uploadFileToGemini = async (filePath, mimeType) => {
 /**
  * Generate AI Response with dynamic API Key support
  */
-export const generateAIResponse = async (prompt, fileUri = null, fileMime = null, customSystemInstruction = null, chatId = null) => {
+export const generateAIResponse = async (
+    prompt,
+    fileUri = null,
+    fileMime = null,
+    customSystemInstruction = null,
+    chatId = null
+) => {
     if (!process.env.GEMINI_API_KEY) {
         throw new Error('GEMINI_API_KEY is not set.');
     }
 
     const ai = new GoogleGenAI({
-        apiKey: process.env.GEMINI_API_KEY
+        apiKey: process.env.GEMINI_API_KEY,
     });
 
     const defaultSystemInstruction = `Kamu adalah KanataBot, asisten AI yang cerdas. 
@@ -126,16 +128,13 @@ Aturan:
 3. Jangan pernah gunakan emoji (kecuali diperbolehkan di persona).
 4. Jika menggunakan alat (search/code), sertakan hasilnya dalam jawabanmu dengan format yang rapi.`;
 
-    const systemInstruction = customSystemInstruction 
+    const systemInstruction = customSystemInstruction
         ? `${customSystemInstruction}
 
-[System Note: Waktu saat ini ${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}. Gunakan format WhatsApp (*bold*, _italic_, \`code\`).]`  
+[System Note: Waktu saat ini ${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}. Gunakan format WhatsApp (*bold*, _italic_, \`code\`).]`
         : defaultSystemInstruction;
 
-    const tools = [
-        { googleSearch: {} },
-        { codeExecution: {} },
-    ];
+    const tools = [{ googleSearch: {} }, { codeExecution: {} }];
 
     const config = {
         tools,
@@ -152,7 +151,7 @@ Aturan:
 
     let contents;
     let history = [];
-    
+
     if (chatId) {
         const chatData = getChatHistory(chatId);
         history = chatData?.history || [];
@@ -170,7 +169,7 @@ Aturan:
     }
 
     const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: 'gemini-2.5-flash',
         config,
         contents: contents,
     });
@@ -180,14 +179,14 @@ Aturan:
     if (chatId) {
         // Add model response to history
         history.push({
-            role: "model",
-            parts: [{ text: aiResponseText }]
+            role: 'model',
+            parts: [{ text: aiResponseText }],
         });
         setChatHistory(chatId, history);
     }
 
     // Clean response text: Convert Markdown bold (**) to WhatsApp bold (*)
     let finalOutput = aiResponseText.replace(/\*\*(.*?)\*\*/g, '*$1*');
-    
+
     return finalOutput;
 };

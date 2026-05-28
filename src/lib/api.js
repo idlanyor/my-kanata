@@ -11,12 +11,12 @@ const BASE_URL = 'https://api.kanata.web.id';
 export const get = async (url, options = {}) => {
     const isFullUrl = url.startsWith('http');
     const requestUrl = isFullUrl ? url : `${BASE_URL}${url}`;
-    
+
     const axiosOptions = {
         params: options.params || {},
         headers: options.headers || {},
         responseType: options.responseType || 'json', // 'arraybuffer', 'stream', 'document', 'text'
-        timeout: options.timeout || 60000 // 1 minute timeout default
+        timeout: options.timeout || 60000, // 1 minute timeout default
     };
 
     try {
@@ -24,7 +24,9 @@ export const get = async (url, options = {}) => {
         return response.data;
     } catch (error) {
         if (error.response) {
-            throw new Error(`API request failed with status ${error.response.status}: ${error.response.statusText}`);
+            throw new Error(
+                `API request failed with status ${error.response.status}: ${error.response.statusText}`
+            );
         } else if (error.request) {
             throw new Error('No response received from API');
         } else {
@@ -43,11 +45,11 @@ export const get = async (url, options = {}) => {
 export const post = async (url, data = {}, options = {}) => {
     const isFullUrl = url.startsWith('http');
     const requestUrl = isFullUrl ? url : `${BASE_URL}${url}`;
-    
+
     const axiosOptions = {
         headers: options.headers || {},
         responseType: options.responseType || 'json',
-        timeout: options.timeout || 60000
+        timeout: options.timeout || 60000,
     };
 
     try {
@@ -55,7 +57,9 @@ export const post = async (url, data = {}, options = {}) => {
         return response.data;
     } catch (error) {
         if (error.response) {
-            throw new Error(`API request failed with status ${error.response.status}: ${error.response.statusText}`);
+            throw new Error(
+                `API request failed with status ${error.response.status}: ${error.response.statusText}`
+            );
         } else if (error.request) {
             throw new Error('No response received from API');
         } else {

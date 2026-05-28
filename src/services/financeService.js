@@ -1,12 +1,12 @@
 import Transaction from '../database/models/Transaction.js';
 export { Transaction };
 import Budget from '../database/models/Budget.js';
-import { GoogleGenAI, createUserContent, createPartFromUri } from "@google/genai";
+import { GoogleGenAI, createUserContent, createPartFromUri } from '@google/genai';
 import fs from 'fs';
-import { makeResultPath } from './resultPath.js';
+import { makeResultPath } from '\.\./utils/resultPath\.js';
 
 const ai = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY
+    apiKey: process.env.GEMINI_API_KEY,
 });
 
 const getRandom = (ext) => `${Math.floor(Math.random() * 10000)}${ext}`;
@@ -35,7 +35,7 @@ export const getKakeiboReport = async (userId, month, year) => {
         extras: 0,
     };
 
-    report.transactions.forEach(tx => {
+    report.transactions.forEach((tx) => {
         if (tx.type === 'expense') {
             // Prioritize explicit Kakeibo category
             if (tx.kakeiboCategory && kakeibo.hasOwnProperty(tx.kakeiboCategory)) {
@@ -59,11 +59,21 @@ export const getKakeiboReport = async (userId, month, year) => {
     return {
         ...report,
         budget: budget || { incomeTarget: 0, savingsTarget: 0 },
-        kakeibo
+        kakeibo,
     };
 };
 
-export const addTransaction = async ({ userId, userName, type, amount, category, description, date, kakeiboCategory, source = 'finance' }) => {
+export const addTransaction = async ({
+    userId,
+    userName,
+    type,
+    amount,
+    category,
+    description,
+    date,
+    kakeiboCategory,
+    source = 'finance',
+}) => {
     return await Transaction.create({
         userId,
         userName,
@@ -73,7 +83,7 @@ export const addTransaction = async ({ userId, userName, type, amount, category,
         description,
         kakeiboCategory,
         date: date ? new Date(date) : new Date(),
-        source
+        source,
     });
 };
 
@@ -114,7 +124,7 @@ export const getMonthlyReport = async (userId, month, year, filters = {}) => {
 
     const query = {
         userId,
-        date: { $gte: startDate, $lte: endDate }
+        date: { $gte: startDate, $lte: endDate },
     };
 
     if (filters.type) query.type = filters.type;
@@ -125,7 +135,7 @@ export const getMonthlyReport = async (userId, month, year, filters = {}) => {
 
     let totalIncome = 0;
     let totalExpense = 0;
-    transactions.forEach(tx => {
+    transactions.forEach((tx) => {
         if (tx.type === 'income') totalIncome += tx.amount;
         else totalExpense += tx.amount;
     });
@@ -135,7 +145,7 @@ export const getMonthlyReport = async (userId, month, year, filters = {}) => {
         totalIncome,
         totalExpense,
         balance: totalIncome - totalExpense,
-        period: { month: targetMonth + 1, year: targetYear, startDate, endDate }
+        period: { month: targetMonth + 1, year: targetYear, startDate, endDate },
     };
 };
 
@@ -159,11 +169,11 @@ export const processAiTransaction = async (userId, userName, prompt, fileData = 
 
             fileUri = myfile.uri;
             fileMime = myfile.mimeType;
-            
+
             if (!prompt) {
-                prompt = fileData.mimeType.includes('audio') 
-                    ? "Ekstrak transaksi dari rekaman suara ini." 
-                    : "Ekstrak data transaksi dari screenshot/struk ini. Cari nominal total, kategori, dan deskripsinya.";
+                prompt = fileData.mimeType.includes('audio')
+                    ? 'Ekstrak transaksi dari rekaman suara ini.'
+                    : 'Ekstrak data transaksi dari screenshot/struk ini. Cari nominal total, kategori, dan deskripsinya.';
             }
         }
 
@@ -189,10 +199,10 @@ Jika tidak jelas, balas: {"error": "data tidak jelas"}`;
 
         const parts = [];
         if (fileUri) parts.push(createPartFromUri(fileUri, fileMime));
-        parts.push(prompt || "Catat transaksi");
+        parts.push(prompt || 'Catat transaksi');
 
         const result = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: 'gemini-2.5-flash',
             config: { systemInstruction },
             contents: createUserContent(parts),
         });
@@ -220,13 +230,12 @@ Jika tidak jelas, balas: {"error": "data tidak jelas"}`;
                 category: txData.category,
                 description: txData.description,
                 date: txData.date,
-                source: 'finance'
+                source: 'finance',
             });
             savedTransactions.push(newTx);
         }
 
         return { success: true, transactions: savedTransactions };
-
     } finally {
         if (tempPath && fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
     }

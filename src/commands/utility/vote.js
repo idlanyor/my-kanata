@@ -10,7 +10,7 @@ export default {
             return m.reply(`Format salah!\nContoh: .vote Pertanyaan | Opsi 1 | Opsi 2`);
         }
 
-        const parts = text.split('|').map(v => v.trim());
+        const parts = text.split('|').map((v) => v.trim());
         const question = parts[0];
         const options = parts.slice(1);
 
@@ -21,14 +21,15 @@ export default {
             poll: {
                 name: question,
                 values: options,
-                selectableCount: 1
-            }
+                selectableCount: 1,
+            },
         });
 
         // Simpan rahasia pesan ke database untuk keperluan dekripsi vote nanti
-        const messageSecret = pollMsg.messageContextInfo?.messageSecret || 
-                              pollMsg.message?.pollCreationMessage?.messageContextInfo?.messageSecret ||
-                              pollMsg.message?.messageContextInfo?.messageSecret;
+        const messageSecret =
+            pollMsg.messageContextInfo?.messageSecret ||
+            pollMsg.message?.pollCreationMessage?.messageContextInfo?.messageSecret ||
+            pollMsg.message?.messageContextInfo?.messageSecret;
 
         if (messageSecret) {
             await Poll.create({
@@ -36,8 +37,8 @@ export default {
                 chat: m.chat,
                 question: question,
                 options: options,
-                messageSecret: messageSecret
+                messageSecret: messageSecret,
             });
         }
-    }
+    },
 };

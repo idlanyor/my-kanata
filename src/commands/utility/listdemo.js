@@ -5,7 +5,7 @@ export default {
     category: 'Utility',
     execute: async (sock, m, args) => {
         const mode = (args[0] || 'both').toLowerCase();
-        const targetChat = (!m.isGroup && m.chatAlt && m.chatAlt !== m.chat) ? m.chatAlt : m.chat;
+        const targetChat = !m.isGroup && m.chatAlt && m.chatAlt !== m.chat ? m.chatAlt : m.chat;
 
         const classicPayload = {
             text: 'Demo list klasik ala Sanka-Baileys',
@@ -16,8 +16,16 @@ export default {
                 {
                     title: 'Downloader',
                     rows: [
-                        { title: 'YouTube Search', rowId: '.yts himawari', description: 'Cari video YouTube' },
-                        { title: 'TikTok', rowId: '.tiktok https://vt.tiktok.com/', description: 'Download TikTok' },
+                        {
+                            title: 'YouTube Search',
+                            rowId: '.yts himawari',
+                            description: 'Cari video YouTube',
+                        },
+                        {
+                            title: 'TikTok',
+                            rowId: '.tiktok https://vt.tiktok.com/',
+                            description: 'Download TikTok',
+                        },
                     ],
                 },
                 {

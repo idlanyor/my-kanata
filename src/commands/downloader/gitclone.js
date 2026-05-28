@@ -48,15 +48,18 @@ Example: .gitclone https://github.com/user/repo`);
             zip.writeZip(zipPath);
 
             // Send ZIP
-            await sock.sendMessage(m.chat, {
-                document: fs.readFileSync(zipPath),
-                mimetype: 'application/zip',
-                fileName: `${repo}.zip`,
-                caption: ` *Repository:* ${user}/${repo}
- *Source:* ${url}`
-            }, { quoted: m });
+            await sock.sendMessage(
+                m.chat,
+                {
+                    document: fs.readFileSync(zipPath),
+                    mimetype: 'application/zip',
+                    fileName: `${repo}.zip`,
+                    caption: ` *Repository:* ${user}/${repo}
+ *Source:* ${url}`,
+                },
+                { quoted: m }
+            );
             await m.react('✅');
-
         } catch (error) {
             console.error('GitClone Error:', error);
             await m.react('❌');
@@ -70,5 +73,5 @@ Example: .gitclone https://github.com/user/repo`);
                 fs.unlinkSync(zipPath);
             }
         }
-    }
+    },
 };
