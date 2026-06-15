@@ -7,7 +7,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node src/index.js",
     "dev": "nodemon",
-    "pm2": "pm2 start ecosystem.config.js --env production"
+    "pm2": "pm2 start ecosystem.config.js --env production",
+    "db:migrate": "knex --knexfile src/config/knexfile.js migrate:latest",
+    "db:rollback": "knex --knexfile src/config/knexfile.js migrate:rollback"
   },
   "keywords": [],
   "author": "",
@@ -20,6 +22,7 @@
     "axios": "^1.13.4",
     "baileys": "7.0.0-rc.9",
     "bcrypt": "^6.0.0",
+    "better-sqlite3": "^12.10.1",
     "boxen": "^8.0.1",
     "canvas": "^3.2.1",
     "cfonts": "^3.3.1",
@@ -35,6 +38,7 @@
     "gradient-string": "^3.0.0",
     "ilovepdf-sdk": "^0.0.5",
     "jimp": "^1.6.0",
+    "knex": "^3.2.10",
     "moment": "^2.30.1",
     "mongoose": "^9.1.5",
     "ms": "^2.1.3",
