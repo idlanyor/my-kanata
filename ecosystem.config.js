@@ -1,9 +1,7 @@
 export const apps = [
     {
         name: 'kanata-bot',
-        cwd: '/home/roy/phopi/mybot',
         script: './src/index.js',
-        interpreter: '/home/roy/.nvm/versions/node/v25.6.1/bin/node',
         instances: 1,
         exec_mode: 'fork',
         autorestart: true,
