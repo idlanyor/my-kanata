@@ -145,8 +145,8 @@ export const model = (name, schemaLike, collectionName) => {
     // Apply second-arg-collection-name convention (Mongoose compat)
     if (!schema.options.collection) schema.options.collection = name.toLowerCase() + 's';
 
-    // Default table name -> snake_case
-    const tableName = (collectionName || name).toLowerCase();
+    // Default table name -> pluralized Mongoose style
+    const tableName = collectionName || schema.options.collection;
 
     // Pre-build the model so the first `find()` is responsive.
     const M = defineModel(tableName, schema);
