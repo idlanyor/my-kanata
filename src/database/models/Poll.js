@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from '../index.js';
 
 const pollSchema = new mongoose.Schema({
     pollId: { type: String, required: true, unique: true },

@@ -2,13 +2,11 @@ import { serialize, decodeJid } from '../utils/serialize.js';
 import { commands } from '../lib/commands.js';
 import logger from '../utils/logger.js';
 import { settings } from '../config/settings.js';
-import chalk from 'chalk';
 import { saveMessage } from '../lib/msgStore.js';
 import {
     clearSettingsCache,
     getCachedSettings,
     getGroupSettings,
-    getRequiredGroupParticipants,
     handlePreProcessing,
     handleSpecialMessages,
     handleAutoAiPrivate,
@@ -16,13 +14,15 @@ import {
 import { handleButtons } from './buttonHandler.js';
 import { sessionManager } from '../utils/session.js';
 import NodeCache from 'node-cache';
+import { DEFAULT_PREFIXES, CACHE_TTL, CACHE_CHECK_PERIOD } from '../constants/config.js';
+import { getBotIdentity, checkOwner, checkJoinGroup } from '../middlewares/auth.js';
+import { handleDeleteServerConfirmation } from '../middlewares/deleteServer.js';
+import { getCachedGroupMetadata, refreshGroupMetadata } from '../middlewares/group.js';
 
 export { clearSettingsCache } from './messageFlow.js';
 
-const processingMessages = new NodeCache({ stdTTL: 60, checkperiod: 120 });
-const metadataCache = new NodeCache({ stdTTL: 300, checkperiod: 300 });
-const metadataPromiseCache = new Map();
-const prefixes = [settings.prefix, '.', '!', '/'];
+const processingMessages = new NodeCache({ stdTTL: CACHE_TTL.MESSAGES, checkperiod: CACHE_CHECK_PERIOD.MESSAGES });
+const prefixes = [settings.prefix, ...DEFAULT_PREFIXES];
 
 const buildJidCandidates = (...values) => {
     const candidates = new Set();
@@ -46,98 +46,6 @@ const buildJidCandidates = (...values) => {
     return [...candidates];
 };
 
-let botIdentityCache = null;
-const getBotIdentity = (sock) => {
-    if (botIdentityCache) return botIdentityCache;
-
-    const ownerJid = decodeJid(settings.ownerNumber);
-    const ownerLid = settings.ownerLid ? decodeJid(settings.ownerLid) : null;
-    const botJid = decodeJid(sock.user.id);
-    const botLid = sock.user.lid ? decodeJid(sock.user.lid) : null;
-
-    botIdentityCache = { ownerJid, ownerLid, botJid, botLid };
-    return botIdentityCache;
-};
-
-const getCachedGroupMetadata = (jid) => {
-    const data = metadataCache.get(jid);
-    if (!data) return null;
-    return { data, isFresh: true };
-};
-
-const refreshGroupMetadata = async (sock, jid) => {
-    const existingPromise = metadataPromiseCache.get(jid);
-    if (existingPromise) {
-        return existingPromise;
-    }
-
-    const promise = (async () => {
-        try {
-            const data = await sock.groupMetadata(jid);
-            metadataCache.set(jid, data);
-            return data;
-        } finally {
-            metadataPromiseCache.delete(jid);
-        }
-    })();
-
-    metadataPromiseCache.set(jid, promise);
-    return promise;
-};
-
-const handleDeleteServerConfirmation = async (m) => {
-    const confirm = global.confirmDelete.get(m.sender);
-    const body = m.body?.toLowerCase();
-
-    if (body === 'y' || body === 'ya') {
-        const { pteroId, force, timeout } = confirm;
-        clearTimeout(timeout);
-        global.confirmDelete.delete(m.sender);
-
-        await m.react('⏳');
-
-        try {
-            const PTERO_URL = process.env.PTERO_URL;
-            const PTERO_API_KEY = process.env.PTERO_API_KEY;
-            const axios = (await import('axios')).default;
-
-            const ptero = axios.create({
-                baseURL: `${PTERO_URL}/api/application`,
-                headers: {
-                    Authorization: `Bearer ${PTERO_API_KEY}`,
-                    'Content-Type': 'application/json',
-                    Accept: 'Application/vnd.pterodactyl.v1+json',
-                },
-            });
-
-            try {
-                await ptero.delete(force ? `/servers/${pteroId}/force` : `/servers/${pteroId}`);
-            } catch (e) {
-                if (e.response?.status !== 404) throw e;
-            }
-
-            const Server = (await import('../database/models/Server.js')).default;
-            const deletedDb = await Server.deleteOne({ pteroId });
-
-            await m.reply(
-                `✅ *SERVER BERHASIL DIHAPUS*\n\nID: ${pteroId}\nDB: ${deletedDb.deletedCount > 0 ? 'Terhapus' : 'Tidak di DB'}`
-            );
-            await m.react('✅');
-        } catch (err) {
-            await m.react('❌');
-            await m.reply(`❌ Gagal menghapus server: ${err.message}`);
-        }
-        return;
-    }
-
-    if (body) {
-        const { timeout } = confirm;
-        clearTimeout(timeout);
-        global.confirmDelete.delete(m.sender);
-        await m.reply('❌ Penghapusan dibatalkan.');
-    }
-};
-
 export const messageHandler = async (sock, m) => {
     if (!m || !m.key || !m.key.id) return;
     if (m.key.remoteJid.includes('120363403334136453@g.us'))
@@ -146,7 +54,6 @@ export const messageHandler = async (sock, m) => {
     processingMessages.set(m.key.id, true);
 
     try {
-        // Parallelized Initial Data Fetching
         const [botSettings, mSerialized] = await Promise.all([
             getCachedSettings(),
             (async () => {
@@ -170,7 +77,6 @@ export const messageHandler = async (sock, m) => {
         if (!m || (!m.body && !m.mtype)) return;
         if (m.chat?.endsWith('@newsletter')) return;
 
-        // 1. Setup metadata and prefixes in parallel
         const usedPrefix = m.body ? prefixes.find((p) => m.body.startsWith(p)) : undefined;
         const cachedMetadata = m.isGroup ? getCachedGroupMetadata(m.chat) : null;
         m.metadata = cachedMetadata?.data || {};
@@ -179,11 +85,7 @@ export const messageHandler = async (sock, m) => {
             refreshGroupMetadata(sock, m.chat).catch(() => {});
         }
 
-        // 2. Parallelize logging, message saving and further data requirements
-        const { ownerJid, ownerLid, botJid, botLid } = getBotIdentity(sock);
-        const staticOwners = [ownerJid, ownerLid, botJid, botLid];
-        const dbOwners = botSettings.owners || [];
-        const isOwner = m.sender ? [...staticOwners, ...dbOwners].includes(m.sender) : false;
+        const isOwner = checkOwner(m, sock, botSettings);
 
         const groupDataPromise =
             m.isGroup && !isOwner && !m.key.fromMe
@@ -205,7 +107,6 @@ export const messageHandler = async (sock, m) => {
 
         if (!m.sender) return;
 
-        // --- SESSION HANDLER INTERCEPTION ---
         const activeSession = sessionManager.get(m.sender);
         if (activeSession && !m.body.startsWith(settings.prefix)) {
             const command = commands.get(activeSession.data.commandName);
@@ -215,10 +116,8 @@ export const messageHandler = async (sock, m) => {
             }
         }
 
-        // Check for delete server confirmation early (owner only)
         if (isOwner && global.confirmDelete?.has(m.sender)) {
-            await handleDeleteServerConfirmation(m);
-            return;
+            if (await handleDeleteServerConfirmation(m)) return;
         }
 
         if (m.key.fromMe) {
@@ -228,50 +127,12 @@ export const messageHandler = async (sock, m) => {
         if (await handlePreProcessing(sock, m, groupData, isOwner)) return;
         await handleSpecialMessages(sock, m);
 
-        // --- UNIVERSAL BUTTON DISPATCHER ---
         if (await handleButtons(sock, m, isOwner)) return;
 
         if (m.key.fromMe && botSettings.mode !== 'self') return;
 
-        // Optimized Join Group Check
-        if (!m.isGroup && !isOwner && botSettings.mustJoinGroup) {
-            try {
-                if (
-                    !global.targetGroupJid ||
-                    global.targetGroupInviteLink !== botSettings.groupInviteLink
-                ) {
-                    const code = botSettings.groupInviteLink.split('chat.whatsapp.com/')[1];
-                    const groupInfo = await sock.groupGetInviteInfo(code);
-                    global.targetGroupJid = groupInfo.id;
-                    global.targetGroupInviteLink = botSettings.groupInviteLink;
-                }
-
-                const senderCandidates = buildJidCandidates(
-                    m.sender,
-                    m.key?.participant,
-                    m.key?.remoteJid
-                );
-                let participants = await getRequiredGroupParticipants(sock, global.targetGroupJid);
-                let isMember = senderCandidates.some((candidate) => participants.has(candidate));
-
-                if (!isMember) {
-                    participants = await getRequiredGroupParticipants(
-                        sock,
-                        global.targetGroupJid,
-                        true
-                    );
-                    isMember = senderCandidates.some((candidate) => participants.has(candidate));
-                }
-
-                if (!isMember)
-                    return m.reply(
-                        `*AKSES DITOLAK*\n\nMaaf @${m.sender.split('@')[0]}, untuk menggunakan bot ini di Private Chat, kamu wajib bergabung ke grup official kami terlebih dahulu.\n\n*Link Grup:* ${botSettings.groupInviteLink}\n\nSetelah bergabung, silakan coba lagi!`,
-                        { mentions: [m.sender] }
-                    );
-            } catch (e) {
-                logger.error('Join Group Check failed:', e.message);
-            }
-        }
+        const canProceed = await checkJoinGroup(sock, m, isOwner, botSettings, buildJidCandidates);
+        if (!canProceed) return;
 
         if (usedPrefix) {
             const cmdName = m.body.slice(usedPrefix.length).trim().split(/\s+/)[0].toLowerCase();
@@ -285,7 +146,6 @@ export const messageHandler = async (sock, m) => {
                 if (command.category === 'Owner' && !isOwner)
                     return m.reply(' Akses Ditolak. Perintah ini hanya untuk Owner.');
 
-                // Fire and forget presence
                 sock.sendPresenceUpdate('composing', m.chat).catch(() => {});
 
                 try {
@@ -313,6 +173,7 @@ export const messageHandler = async (sock, m) => {
                     });
                     logger.error(err, `Error in command: ${cmdName}`);
 
+                    const { ownerJid } = getBotIdentity(sock);
                     const errorMsg = ` *COMMAND ERROR REPORT*\n\n➛ *Command:* ${cmdName}\n➛ *Sender:* @${m.sender.split('@')[0]}\n➛ *Error:* ${err.message}\n\n\`\`\`${err.stack}\`\`\``;
                     await sock
                         .sendMessage(ownerJid, { text: errorMsg, mentions: [m.sender] })

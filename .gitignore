@@ -12,3 +12,5 @@ AGENTS.md
 .cache
 /webui
 logs/
+data/
+/data/

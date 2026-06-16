@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from '../index.js';
 
 const serverSchema = new mongoose.Schema(
     {
