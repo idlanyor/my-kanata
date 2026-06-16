@@ -368,6 +368,9 @@ const wrapDocument = (row, ctx) => {
                 if (typeof this[k] === 'function') continue;
                 out[k] = this[k];
             }
+            if (ctx.tableName === 'settings' && this.settingsId !== undefined) {
+                out.id = this.settingsId;
+            }
             return out;
         },
         async save() {
@@ -397,6 +400,15 @@ const wrapDocument = (row, ctx) => {
             return this;
         },
     };
+
+    if (ctx.tableName === 'settings' && row.settingsId !== undefined) {
+        Object.defineProperty(doc, 'id', {
+            get() { return this.settingsId; },
+            set(v) { this.settingsId = v; },
+            enumerable: true,
+            configurable: true
+        });
+    }
 
     return doc;
 };
@@ -543,19 +555,43 @@ export const defineModel = (tableName, schema = { paths: {}, options: {} }, opts
         return out;
     };
 
+    const _mapSettingsFilter = (f) => {
+        if (tableName !== 'settings' || !f || typeof f !== 'object') return f;
+        const out = { ...f };
+        if ('id' in out) {
+            out.settingsId = out.id;
+            delete out.id;
+        }
+        return out;
+    };
+
+    const _mapSettingsUpdate = (u) => {
+        if (tableName !== 'settings' || !u || typeof u !== 'object') return u;
+        const out = { ...u };
+        if (out.$set && 'id' in out.$set) {
+            out.$set = { ...out.$set };
+            out.$set.settingsId = out.$set.id;
+            delete out.$set.id;
+        }
+        if ('id' in out && !Object.keys(out).some(k => k.startsWith('$'))) {
+            out.settingsId = out.id;
+            delete out.id;
+        }
+        return out;
+    };
+
     /* ---- core query helpers ------------------------------------- */
     const _buildQuery = (filter = {}, opts = {}) => {
-        // buildQuery already accepts isOne via opts; pass through
-        return buildQuery({ knex, tableName, filter, schema, isOne: false, ...opts });
+        const mapped = _mapSettingsFilter(filter);
+        return buildQuery({ knex, tableName, filter: mapped, schema, isOne: false, ...opts });
     };
     const _toUpdatePayload = (data) => {
-        // If `data` uses operator keys, decompose. Otherwise treat as
-        // an implicit $set (Mongoose behavior).
-        const opKeys = Object.keys(data || {}).filter(k => k.startsWith('$'));
+        const mapped = _mapSettingsUpdate(data);
+        const opKeys = Object.keys(mapped || {}).filter(k => k.startsWith('$'));
         if (opKeys.length > 0) {
-            return decomposeUpdate(data);
+            return decomposeUpdate(mapped);
         }
-        return { set: { ...data }, increments: [], jsonExtracts: [], push: [], pull: [], addToSet: [], unsets: [], muls: [], renames: [] };
+        return { set: { ...mapped }, increments: [], jsonExtracts: [], push: [], pull: [], addToSet: [], unsets: [], muls: [], renames: [] };
     };
 
     const _normalizeReturning = (returning) => {
@@ -594,17 +630,18 @@ export const defineModel = (tableName, schema = { paths: {}, options: {} }, opts
         },
 
         async findOneAndUpdate(filter = {}, update = {}, options = {}) {
+            const mappedFilter = _mapSettingsFilter(filter);
             const decomp = _toUpdatePayload(update);
 
             if (options.upsert) {
                 // Two-step: check existing, then either insert or update
                 const probeQb = knex(tableName);
-                applyFilterGroup(probeQb, filter);
+                applyFilterGroup(probeQb, mappedFilter);
                 const existing = await probeQb.first('id');
                 if (!existing) {
                     const insertDoc = {};
-                    for (const k of Object.keys(filter)) {
-                        const v = filter[k];
+                    for (const k of Object.keys(mappedFilter)) {
+                        const v = mappedFilter[k];
                         if (v !== null && typeof v === 'object' && !Array.isArray(v) && !Buffer.isBuffer(v)) continue;
                         insertDoc[k] = v;
                     }
@@ -616,14 +653,14 @@ export const defineModel = (tableName, schema = { paths: {}, options: {} }, opts
                     await knex(tableName).insert(insertDoc);
                 } else {
                     const updateQb = knex(tableName);
-                    applyFilterGroup(updateQb, filter);
+                    applyFilterGroup(updateQb, mappedFilter);
                     applyUpdate(updateQb, decomp);
                     if (useTimestamps) updateQb.update('updated_at', knex.fn.now());
                     await updateQb;
                 }
             } else {
                 const qb = knex(tableName);
-                applyFilterGroup(qb, filter);
+                applyFilterGroup(qb, mappedFilter);
                 applyUpdate(qb, decomp);
                 if (useTimestamps) qb.update('updated_at', knex.fn.now());
                 await qb;
@@ -631,7 +668,7 @@ export const defineModel = (tableName, schema = { paths: {}, options: {} }, opts
 
             if (options.new) {
                 const refetchQb = knex(tableName);
-                applyFilterGroup(refetchQb, filter);
+                applyFilterGroup(refetchQb, mappedFilter);
                 if (options.sort) {
                     const sortObj = parseSort(options.sort);
                     for (const k of Object.keys(sortObj)) refetchQb.orderBy(k, sortObj[k]);
@@ -644,8 +681,9 @@ export const defineModel = (tableName, schema = { paths: {}, options: {} }, opts
         },
 
         async findOneAndDelete(filter = {}) {
+            const mappedFilter = _mapSettingsFilter(filter);
             const qb = knex(tableName);
-            applyFilterGroup(qb, filter);
+            applyFilterGroup(qb, mappedFilter);
             const row = await qb.clone().first();
             if (!row) return null;
             await qb.delete();
@@ -654,7 +692,8 @@ export const defineModel = (tableName, schema = { paths: {}, options: {} }, opts
 
         async create(docs) {
             const arr = Array.isArray(docs) ? docs : [docs];
-            const normalized = arr.map(d => _applyDefaults(d));
+            const mapped = arr.map(d => _mapSettingsUpdate(d));
+            const normalized = mapped.map(d => _applyDefaults(d));
             const ret = await knex(tableName).insert(normalized).returning('id');
             // Re-fetch to return full documents (matches Mongoose behavior)
             const ids = ret.map(r => (typeof r === 'object' ? r.id : r));
