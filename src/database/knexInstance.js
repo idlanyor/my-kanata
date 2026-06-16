@@ -30,7 +30,7 @@ let cachedConfig = null;
 export const buildKnexConfig = (overrides = {}) => {
     if (cachedConfig) return { ...cachedConfig, ...overrides };
 
-    const sqlitePath = process.env.SQLITE_PATH || './data/bot.sqlite';
+    const sqlitePath = process.env.SQLITE_PATH || './data/bot.db';
     const useMemory = process.env.SQLITE_MEMORY === '1' || sqlitePath === ':memory:';
 
     cachedConfig = {
