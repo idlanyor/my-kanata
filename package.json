@@ -11,7 +11,6 @@
         "lint": "eslint . --quiet",
         "lint:fix": "eslint . --fix",
         "format": "prettier --write .",
-        "prepare": "husky",
         "db:migrate": "knex --knexfile src/config/knexfile.js migrate:latest",
         "db:rollback": "knex --knexfile src/config/knexfile.js migrate:rollback"
     },
