@@ -143,7 +143,10 @@ export const model = (name, schemaLike, collectionName) => {
     };
     if (collectionName) schema.options.collection = collectionName;
     // Apply second-arg-collection-name convention (Mongoose compat)
-    if (!schema.options.collection) schema.options.collection = name.toLowerCase() + 's';
+    if (!schema.options.collection) {
+        const base = name.toLowerCase();
+        schema.options.collection = base.endsWith('s') ? base : base + 's';
+    }
 
     // Default table name -> pluralized Mongoose style
     const tableName = collectionName || schema.options.collection;
